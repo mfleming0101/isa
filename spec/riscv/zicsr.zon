@@ -1,0 +1,11 @@
+// The Zicsr rows: control and status register access.
+.{
+    .{ .name = "CSRRCI_1497", .group = "zicsr", .class = "system", .bits = "cccccccccccchhhhh111ddddd1110011", .text = "csrrci {d}, {csr}, {h}" },
+    .{ .name = "CSRRC_1494", .group = "zicsr", .class = "system", .bits = "ccccccccccccnnnnn011ddddd1110011", .text = "csrrc {d}, {csr}, {n}", .aliases = .{.{ .text = "csrc {csr}, {n}", .letter = 'd', .value = 0 }} },
+    .{ .name = "CSRRSI_1496", .group = "zicsr", .class = "system", .bits = "cccccccccccchhhhh110ddddd1110011", .text = "csrrsi {d}, {csr}, {h}" },
+    .{ .name = "CSRRS_1493", .group = "zicsr", .class = "system", .bits = "ccccccccccccnnnnn010ddddd1110011", .text = "csrrs {d}, {csr}, {n}", .aliases = .{ .{ .text = "csrr {d}, {csr}", .letter = 'n', .value = 0 }, .{ .text = "csrs {csr}, {n}", .letter = 'd', .value = 0 } } },
+    .{ .name = "CSRRWI_1495", .group = "zicsr", .class = "system", .bits = "cccccccccccchhhhh101ddddd1110011", .text = "csrrwi {d}, {csr}, {h}" },
+    .{ .name = "CSRRW_1492", .group = "zicsr", .class = "system", .bits = "ccccccccccccnnnnn001ddddd1110011", .text = "csrrw {d}, {csr}, {n}", .aliases = .{.{ .text = "csrw {csr}, {n}", .letter = 'd', .value = 0 }} },
+    .{ .name = "MRET_1498", .group = "zicsr", .class = "system", .bits = "00110000001000000000000001110011", .text = "mret" },
+    .{ .name = "WFI_1499", .group = "zicsr", .class = "system", .bits = "00010000010100000000000001110011", .text = "wfi" },
+}

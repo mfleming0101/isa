@@ -1,0 +1,11 @@
+// The M extension rows: multiply and divide.
+.{
+    .{ .name = "DIVU_363", .group = "m", .class = "divide", .bits = "0000001mmmmmnnnnn101ddddd0110011", .text = "divu {d}, {n}, {m}" },
+    .{ .name = "DIV_362", .group = "m", .class = "divide", .bits = "0000001mmmmmnnnnn100ddddd0110011", .text = "div {d}, {n}, {m}" },
+    .{ .name = "MULHSU_360", .group = "m", .class = "multiply", .bits = "0000001mmmmmnnnnn010ddddd0110011", .text = "mulhsu {d}, {n}, {m}" },
+    .{ .name = "MULHU_361", .group = "m", .class = "multiply", .bits = "0000001mmmmmnnnnn011ddddd0110011", .text = "mulhu {d}, {n}, {m}" },
+    .{ .name = "MULH_359", .group = "m", .class = "multiply", .bits = "0000001mmmmmnnnnn001ddddd0110011", .text = "mulh {d}, {n}, {m}" },
+    .{ .name = "MUL_358", .group = "m", .class = "multiply", .bits = "0000001mmmmmnnnnn000ddddd0110011", .text = "mul {d}, {n}, {m}" },
+    .{ .name = "REMU_365", .group = "m", .class = "divide", .bits = "0000001mmmmmnnnnn111ddddd0110011", .text = "remu {d}, {n}, {m}" },
+    .{ .name = "REM_364", .group = "m", .class = "divide", .bits = "0000001mmmmmnnnnn110ddddd0110011", .text = "rem {d}, {n}, {m}" },
+}

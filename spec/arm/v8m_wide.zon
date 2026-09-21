@@ -1,0 +1,20 @@
+// The 32-bit rows Armv8-M adds: security gateway, test target and load-acquire, store-release.
+.{
+    .{ .name = "LDAB_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111110001111", .text = "ldab r{t}, [r{n}]" },
+    .{ .name = "LDAEXB_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111111001111", .text = "ldaexb r{t}, [r{n}]" },
+    .{ .name = "LDAEXH_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111111011111", .text = "ldaexh r{t}, [r{n}]" },
+    .{ .name = "LDAEX_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111111101111", .text = "ldaex r{t}, [r{n}]" },
+    .{ .name = "LDAH_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111110011111", .text = "ldah r{t}, [r{n}]" },
+    .{ .name = "LDA_T1", .group = "v8m", .class = "load", .bits = "111010001101nnnntttt111110101111", .text = "lda r{t}, [r{n}]" },
+    .{ .name = "SG_T1", .group = "v8m", .class = "system", .bits = "11101001011111111110100101111111", .text = "sg" },
+    .{ .name = "STLB_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt111110001111", .text = "stlb r{t}, [r{n}]" },
+    .{ .name = "STLEXB_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt11111100dddd", .text = "stlexb r{d}, r{t}, [r{n}]" },
+    .{ .name = "STLEXH_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt11111101dddd", .text = "stlexh r{d}, r{t}, [r{n}]" },
+    .{ .name = "STLEX_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt11111110dddd", .text = "stlex r{d}, r{t}, [r{n}]" },
+    .{ .name = "STLH_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt111110011111", .text = "stlh r{t}, [r{n}]" },
+    .{ .name = "STL_T1", .group = "v8m", .class = "store", .bits = "111010001100nnnntttt111110101111", .text = "stl r{t}, [r{n}]" },
+    .{ .name = "TTAT_T1", .group = "v8m", .class = "data_processing", .bits = "111010000100nnnn1111dddd11000000", .text = "ttat r{d}, r{n}" },
+    .{ .name = "TTA_T1", .group = "v8m", .class = "data_processing", .bits = "111010000100nnnn1111dddd10000000", .text = "tta r{d}, r{n}" },
+    .{ .name = "TTT_T1", .group = "v8m", .class = "data_processing", .bits = "111010000100nnnn1111dddd01000000", .text = "ttt r{d}, r{n}" },
+    .{ .name = "TT_T1", .group = "v8m", .class = "data_processing", .bits = "111010000100nnnn1111dddd00000000", .text = "tt r{d}, r{n}" },
+}

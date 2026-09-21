@@ -1,0 +1,16 @@
+// The 32-bit rows Armv8.1-M adds: low-overhead loops, register clearing and conditional selects.
+.{
+    .{ .name = "BF_T1_b0", .group = "v8_1m", .class = "data_processing", .bits = "111100001ooooooo11p0ciiiiiiiiii1", .text = "{bf}" },
+    .{ .name = "BF_T1_b1", .group = "v8_1m", .class = "data_processing", .bits = "11110001booooooo11p0ciiiiiiiiii1", .text = "{bf}" },
+    .{ .name = "BF_T1_b2", .group = "v8_1m", .class = "data_processing", .bits = "1111001bbooooooo11p0ciiiiiiiiii1", .text = "{bf}" },
+    .{ .name = "BF_T1_b3", .group = "v8_1m", .class = "data_processing", .bits = "111101bbbooooooo11p0ciiiiiiiiii1", .text = "{bf}" },
+    .{ .name = "CLRM_T1", .group = "v8_1m", .class = "data_processing", .bits = "1110100010011111al0rrrrrrrrrrrrr", .text = "clrm {regs}" },
+    .{ .name = "CSEL_T1_r0", .group = "v8_1m", .class = "data_processing", .bits = "111010100101nnnn10kkddddcccc0mmm", .text = "{cs} r{d}, {zn}, {zm}, {cond}" },
+    .{ .name = "CSEL_T1_r12", .group = "v8_1m", .class = "data_processing", .bits = "111010100101nnnn10kkddddcccc11m0", .text = "{cs} r{d}, {zn}, {zm*2+12}, {cond}" },
+    .{ .name = "CSEL_T1_r8", .group = "v8_1m", .class = "data_processing", .bits = "111010100101nnnn10kkddddcccc10mm", .text = "{cs} r{d}, {zn}, {zm+8}, {cond}" },
+    .{ .name = "CSEL_T1_zr", .group = "v8_1m", .class = "data_processing", .bits = "111010100101nnnn10kkddddcccc1111", .text = "{cs} r{d}, {zn}, zr, {cond}" },
+    .{ .name = "DLS_T2", .group = "v8_1m", .class = "branch", .bits = "111100000100nnnn1110000000000001", .text = "dls lr, r{n}" },
+    .{ .name = "LE_T1", .group = "v8_1m", .class = "branch", .bits = "11110000000011111100jiiiiiiiiii1", .text = "le lr, {pc}" },
+    .{ .name = "LE_T2", .group = "v8_1m", .class = "branch", .bits = "11110000001011111100jiiiiiiiiii1", .text = "le {pc}" },
+    .{ .name = "WLS_T1", .group = "v8_1m", .class = "branch", .bits = "111100000100nnnn1100jiiiiiiiiii1", .text = "wls lr, r{n}, {pc}" },
+}

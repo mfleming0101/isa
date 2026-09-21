@@ -1,0 +1,10 @@
+.worktrees/
+.zig-cache*/
+zig-out/
+__pycache__/
+.DS_Store
+corpus/out/
+corpus/third_party/
+bench/*.tsv
+!bench/release-metrics.tsv
+bench/loops/*.elf

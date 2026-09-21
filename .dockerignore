@@ -1,0 +1,4 @@
+corpus/out
+corpus/third_party
+bench/*.tsv
+bench/loops/*.elf

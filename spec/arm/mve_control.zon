@@ -1,0 +1,22 @@
+// The MVE control rows: predicate register access, tail predication and lane extraction.
+.{
+    .{ .name = "DLSTP_T4_lr", .group = "mve", .class = "branch", .bits = "1111000000ss11101110000000000001", .text = "dlstp.{elt} lr, lr" },
+    .{ .name = "DLSTP_T4_r0", .group = "mve", .class = "branch", .bits = "1111000000ss0nnn1110000000000001", .text = "dlstp.{elt} lr, r{n}" },
+    .{ .name = "DLSTP_T4_r12", .group = "mve", .class = "branch", .bits = "1111000000ss110n1110000000000001", .text = "dlstp.{elt} lr, r{n+12}" },
+    .{ .name = "DLSTP_T4_r8", .group = "mve", .class = "branch", .bits = "1111000000ss10nn1110000000000001", .text = "dlstp.{elt} lr, r{n+8}" },
+    .{ .name = "LCTP_T1", .group = "mve", .class = "branch", .bits = "11110000000011111110000000000001", .text = "lctp" },
+    .{ .name = "LETP_T3", .group = "mve", .class = "branch", .bits = "11110000000111111100jiiiiiiiiii1", .text = "letp lr, {pc}" },
+    .{ .name = "VCTP_T1", .group = "mve", .class = "data_processing", .bits = "1111000000ssnnnn1110100000000001", .text = "vctp.{elt} r{n}" },
+    .{ .name = "VMOV_gprs_lanes_T1", .group = "mve", .class = "data_processing", .bits = "111011000001eeeeddd01111000itttt", .text = "vmov q{d}[{i+2}], q{d}[{i}], r{t}, r{e}" },
+    .{ .name = "VMOV_lanes_gprs_T1", .group = "mve", .class = "data_processing", .bits = "111011000000eeeeddd01111000itttt", .text = "vmov r{t}, r{e}, q{d}[{i+2}], q{d}[{i}]" },
+    .{ .name = "VMRS_T1_p0", .group = "mve", .class = "special_register", .bits = "1110111011111101tttt101000010000", .text = "vmrs r{t}, p0" },
+    .{ .name = "VMRS_T1_vpr", .group = "mve", .class = "special_register", .bits = "1110111011111100tttt101000010000", .text = "vmrs r{t}, vpr" },
+    .{ .name = "VMSR_T1_p0", .group = "mve", .class = "special_register", .bits = "1110111011101101tttt101000010000", .text = "vmsr p0, r{t}" },
+    .{ .name = "VMSR_T1_vpr", .group = "mve", .class = "special_register", .bits = "1110111011101100tttt101000010000", .text = "vmsr vpr, r{t}" },
+    .{ .name = "VPSEL_T1", .group = "mve", .class = "data_processing", .bits = "111111100011nnn1ddd011110000mmm1", .text = "vpsel q{d}, q{n}, q{m}" },
+    .{ .name = "VPST_T1", .group = "mve", .class = "data_processing", .bits = "111111100k110001kkk0111101001101", .text = "{vpst}" },
+    .{ .name = "WLSTP_T3_lr", .group = "mve", .class = "branch", .bits = "1111000000ss11101100jiiiiiiiiii1", .text = "wlstp.{elt} lr, lr, {pc}" },
+    .{ .name = "WLSTP_T3_r0", .group = "mve", .class = "branch", .bits = "1111000000ss0nnn1100jiiiiiiiiii1", .text = "wlstp.{elt} lr, r{n}, {pc}" },
+    .{ .name = "WLSTP_T3_r12", .group = "mve", .class = "branch", .bits = "1111000000ss110n1100jiiiiiiiiii1", .text = "wlstp.{elt} lr, r{n+12}, {pc}" },
+    .{ .name = "WLSTP_T3_r8", .group = "mve", .class = "branch", .bits = "1111000000ss10nn1100jiiiiiiiiii1", .text = "wlstp.{elt} lr, r{n+8}, {pc}" },
+}

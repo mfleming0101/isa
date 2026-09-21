@@ -1,0 +1,5 @@
+// The 16-bit rows Armv8-M adds: the non-secure branches.
+.{
+    .{ .name = "BLXNS_T1", .group = "v8m", .class = "branch", .bits = "010001111mmmm100", .text = "blxns r{m}" },
+    .{ .name = "BXNS_T1", .group = "v8m", .class = "branch", .bits = "010001110mmmm100", .text = "bxns r{m}" },
+}
