@@ -91,9 +91,9 @@ fn limited(host: anytype, secure: bool) bool {
     return stack_limits and (secure or host.architecture().main());
 }
 
-fn treatAsSecure(host: anytype) bool {
+fn floatingPoint(host: anytype) bool {
     const Host = root.Host(@TypeOf(host));
-    return @hasDecl(Host, "treatAsSecure") and host.treatAsSecure();
+    return @hasDecl(Host, "floatingPoint") and host.floatingPoint();
 }
 
 fn alternate(host: anytype) ?*State.Banked {
@@ -146,10 +146,10 @@ pub fn msr(s: *State, host: anytype, n: u32, a: u32, m: u32) Outcome {
             },
             4 => {
                 if (privileged) {
-                    const context = if (treatAsSecure(host)) State.control_fpca else 0;
+                    const context = if (floatingPoint(host)) State.control_fpca else 0;
                     s.control = (value & (State.control_npriv | context | pacbtiMask(host))) | (if (s.handler()) s.control & State.control_spsel else value & State.control_spsel);
                 }
-                if (treatAsSecure(host) and host.security() and s.secure) {
+                if (floatingPoint(host) and host.security() and s.secure) {
                     s.control = (s.control & ~State.control_sfpa) | (value & State.control_sfpa);
                 }
             },

@@ -44,8 +44,12 @@ pub const Mem = struct {
     }
 
     /// Whether the FP extension is fitted.
-    pub fn treatAsSecure(self: *Self) bool {
+    pub fn floatingPoint(self: *Self) bool {
         return self.fp_extension;
+    }
+
+    pub fn treatAsSecure(_: *Self) bool {
+        return true;
     }
 
     /// The banked registers of the other security state.
@@ -1781,6 +1785,14 @@ test "MSR CONTROL writes SFPA on a Secure core, and unprivileged Secure code may
     s.control = State.control_npriv;
     try std.testing.expectEqual(.next, exec(&s, &m, 0xf380_8814));
     try std.testing.expectEqual(State.control_npriv | State.control_sfpa, s.control);
+}
+
+test "MSR CONTROL sets FPCA on an ARMv7E-M core with a floating-point unit and no Security Extension, B1.4.4" {
+    var s: State = .{ .xpsr = State.flag_t };
+    var m = memory(.armv7em);
+    s.r[0] = State.control_fpca | State.control_sfpa;
+    try std.testing.expectEqual(.next, exec(&s, &m, 0xf380_8814));
+    try std.testing.expectEqual(State.control_fpca, s.control);
 }
 
 test "a core with no floating-point or vector unit leaves CONTROL.FPCA and SFPA reserved, C2.4.126" {

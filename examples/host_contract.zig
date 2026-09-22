@@ -34,6 +34,9 @@ const Host = struct {
     pub fn mve(self: *Host) bool {
         return self.inner.mve();
     }
+    pub fn floatingPoint(self: *Host) bool {
+        return self.inner.floatingPoint();
+    }
     pub fn coprocessorEnabled(self: *Host) bool {
         return self.inner.coprocessorEnabled();
     }

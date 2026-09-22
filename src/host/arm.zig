@@ -74,6 +74,11 @@ pub const Host = struct {
         return false;
     }
 
+    /// No floating-point unit is fitted; CONTROL.FPCA and SFPA stay reserved.
+    pub fn floatingPoint(_: *Host) bool {
+        return false;
+    }
+
     /// CPACR.CP10 is clear; no floating-point unit is reachable.
     pub fn coprocessorEnabled(_: *Host) bool {
         return false;
