@@ -49,7 +49,6 @@ pub const Summary = struct {
     bytes_per_row: f64,
 
     cold_build_s: f64,
-    cold_test_s: f64,
     compiler_peak_rss_mb: u64,
     gen_s: f64,
 

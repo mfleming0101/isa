@@ -43,7 +43,6 @@ const sample: metrics.Summary = .{
     .runtime_heap_peak = 1,
     .bytes_per_row = 1,
     .cold_build_s = 1,
-    .cold_test_s = 1,
     .compiler_peak_rss_mb = 1,
     .gen_s = 1,
     .host_decls_required = 8,
@@ -135,7 +134,7 @@ test "a partial row carries the slope columns and not the full core ones" {
     tranche.rows_implemented = 14;
     tranche.corpus_pass = 0;
     try std.testing.expect(!metrics.gated(tranche));
-    for ([_][]const u8{ "obj_text", "obj_bss", "bytes_per_row", "cold_build_s", "cold_test_s", "compiler_peak_rss_mb", "gen_s", "loop_ns_arm_mixed" }) |column| {
+    for ([_][]const u8{ "obj_text", "obj_bss", "bytes_per_row", "cold_build_s", "compiler_peak_rss_mb", "gen_s", "loop_ns_arm_mixed" }) |column| {
         try std.testing.expect(metrics.admits(.partial, column));
     }
     for (metrics.full_core_only) |column| {

@@ -136,7 +136,6 @@ pub fn main(init: std.process.Init) !void {
         .bytes_per_row = if (about.rows_total == 0) 0 else @as(f64, @floatFromInt(size.text + size.rodata)) / @as(f64, @floatFromInt(about.rows_total)),
 
         .cold_build_s = build.seconds,
-        .cold_test_s = vectors.seconds,
         .compiler_peak_rss_mb = build.peak_rss_mb,
         .gen_s = gen_s,
 
@@ -446,20 +445,18 @@ fn generate(init: std.process.Init, gpa: std.mem.Allocator) !f64 {
     return @as(f64, @floatFromInt(elapsed)) / std.time.ns_per_s;
 }
 
-const Vectors = struct { passed: u32 = 0, total: u32 = 0, seconds: f64 = 0 };
+const Vectors = struct { passed: u32 = 0, total: u32 = 0 };
 
 fn selftest(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !Vectors {
     const cache = ".zig-cache-cold-test";
     if (options.cold) std.Io.Dir.cwd().deleteTree(init.io, cache) catch {};
 
-    const started = std.Io.Timestamp.now(init.io, .awake);
     const result = try std.process.run(gpa, init.io, .{
         .argv = try zigBuild(gpa, options, &.{ "test", "--summary", "all", "--cache-dir", cache, "--global-cache-dir", try std.fmt.allocPrint(gpa, "{s}/global", .{cache}) }),
     });
-    const elapsed = std.Io.Timestamp.now(init.io, .awake).nanoseconds - started.nanoseconds;
     if (result.term != .exited or result.term.exited != 0) return error.TestsFailed;
 
-    var out: Vectors = .{ .seconds = @as(f64, @floatFromInt(elapsed)) / std.time.ns_per_s };
+    var out: Vectors = .{};
     var lines = std.mem.tokenizeScalar(u8, result.stderr, '\n');
     while (lines.next()) |line| {
         const seen = summary(line) orelse continue;

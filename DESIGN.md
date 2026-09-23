@@ -134,7 +134,7 @@ the history. The timing columns come from the `consumer` CLI each architecture s
 | `decode_only_ns` | Nanoseconds per decode of the codes in the disassembly oracle, without execution |
 | `loop_ns_*` | Five hand-written assembly loops in `bench/loops`, isolating branches, mixed ALU, calls and compressed code |
 | `obj_text`, `obj_rodata` | Section sizes of an object exporting only `isa_step` and `isa_disasm`, the ISA's footprint alone |
-| `cold_build_s`, `cold_test_s` | Wall time of `zig build` and `zig build test` from a clean cache |
+| `cold_build_s` | Wall time of `zig build` from a clean cache |
 | `gen_s` | Wall time of one generator run into a scratch directory |
 | `host_decls_required` | Entries of the host contract, counted from the requirement lists |
 | `rows_implemented`, `rows_total` | From the generated meta; equal, since the tree carries every row |
