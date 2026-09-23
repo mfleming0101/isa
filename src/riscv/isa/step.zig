@@ -25,11 +25,6 @@ pub const Stop = enum(u4) { breakpoint, unimplemented, unrecoverable_trap };
 /// The synchronous exceptions a row raises, named for what happened rather than the code.
 pub const Trap = enum(u4) { none, instruction_access_fault, illegal_instruction, load_access_fault, store_access_fault, environment_call };
 
-/// Whether the loop's stages are force-inlined, which core's run loop reads to pick its shape.
-pub const threaded = true;
-/// The call modifier the loop's stages use.
-pub const inlining: std.builtin.CallModifier = .always_inline;
-
 /// One step's outcome in a 64-bit word: code, class, cycles, branch, stop or trap.
 pub const Result = packed struct(u64) {
     code: u32 = 0,
@@ -86,26 +81,26 @@ pub const Model = struct {
 /// Fetches, decodes, executes and charges one instruction at the program counter. A comptime
 /// group set replaces the Model's and prunes the tree to it; null decodes with the Model's set.
 pub fn step(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
-    return @call(inlining, body, .{ Host, groups, s, host, model });
+    return @call(.always_inline, body, .{ Host, groups, s, host, model });
 }
 
 fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
     const address = s.pc;
     var held: access.Span(Host) = &.{};
     const first = access.fetch(Host, host, address, &held) orelse return Result.trapped(null, .instruction_access_fault);
-    if (decode.escapes(first)) return @call(inlining, wide, .{ Host, groups, s, host, model, address, first, &held });
-    const done = @call(inlining, tree.executeNarrow, .{ Host, s, host, first, groups orelse model.decoding });
+    if (decode.escapes(first)) return @call(.always_inline, wide, .{ Host, groups, s, host, model, address, first, &held });
+    const done = @call(.always_inline, tree.executeNarrow, .{ Host, s, host, first, groups orelse model.decoding });
     switch (done.class) {
-        inline else => |c| return @call(inlining, retire, .{ s, model.costOf(c), address, 2, first, c, done.outcome }),
+        inline else => |c| return @call(.always_inline, retire, .{ s, model.costOf(c), address, 2, first, c, done.outcome }),
     }
 }
 
 fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, address: u32, first: u16, held: *access.Span(Host)) Result {
     const upper = access.parcel(Host, host, held, address +% 2) orelse return Result.trapped(null, .instruction_access_fault);
     const code = @as(u32, upper) << 16 | first;
-    const done = @call(inlining, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding });
+    const done = @call(.always_inline, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding });
     switch (done.class) {
-        inline else => |c| return @call(inlining, retire, .{ s, model.costOf(c), address, 4, code, c, done.outcome }),
+        inline else => |c| return @call(.always_inline, retire, .{ s, model.costOf(c), address, 4, code, c, done.outcome }),
     }
 }
 

@@ -27,11 +27,6 @@ pub const Signal = enum { supervisor_call, exception_return, function_return };
 /// What a halted core waits for: WFE waits for an event, WFI for an interrupt, B1.5.18 and B1.5.19.
 pub const Wait = enum { event, interrupt };
 
-/// Whether the loop's stages are force-inlined, which core's run loop reads to pick its shape.
-pub const threaded = true;
-/// The call modifier the loop's stages use.
-pub const inlining: std.builtin.CallModifier = .always_inline;
-
 /// What one step produced: the code, class, cycles, branch and any halt.
 pub const Result = packed struct(u64) {
     code: u32 = 0,
@@ -86,7 +81,7 @@ pub fn step(comptime Host: type, comptime groups: ?decode.Groups, s: *State, hos
         if (s.xpsr & State.flag_t == 0) return Result.stopped(null, .not_t32_state);
         return @call(.never_inline, conditioned, .{ Host, groups, s, host, model });
     }
-    return @call(inlining, body, .{ Host, groups, s, host, model, false });
+    return @call(.always_inline, body, .{ Host, groups, s, host, model, false });
 }
 
 fn conditioned(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
@@ -116,11 +111,11 @@ fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     const address = s.pc;
     var held: access.Span(Host) = &.{};
     const hw1 = access.fetch(Host, host, address, &held) catch |err| return Result.stopped(null, refused(err));
-    if (escapes(hw1)) return @call(inlining, wide, .{ Host, groups, s, host, model, address, hw1, &held, in_it });
+    if (escapes(hw1)) return @call(.always_inline, wide, .{ Host, groups, s, host, model, address, hw1, &held, in_it });
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 2, hw1);
-    const done = @call(inlining, tree.executeNarrow, .{ Host, s, host, hw1, groups orelse model.decoding.groups });
+    const done = @call(.always_inline, tree.executeNarrow, .{ Host, s, host, hw1, groups orelse model.decoding.groups });
     switch (done.class) {
-        inline else => |c| return @call(inlining, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.outcome }),
+        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.outcome }),
     }
 }
 
@@ -128,10 +123,10 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     const hw2 = access.halfword(Host, host, held, address +% 2) catch |err| return Result.stopped(null, refused(err));
     const code = @as(u32, hw1) << 16 | hw2;
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
-    const done = @call(inlining, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding.groups });
+    const done = @call(.always_inline, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding.groups });
     if (done.outcome == .undefined and absent(Host, host, code)) return Result.stopped(code, .no_coprocessor);
     switch (done.class) {
-        inline else => |c| return @call(inlining, retire, .{ Host, s, host, model.costOf(c), address, 4, code, c, done.outcome }),
+        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 4, code, c, done.outcome }),
     }
 }
 
