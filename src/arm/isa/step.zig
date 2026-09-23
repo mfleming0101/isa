@@ -3,7 +3,6 @@
 //! generated decode tree, prices the instruction and reports the result or why the core
 //! stopped. Also exposes the single-instruction entry a row test drives.
 const std = @import("std");
-const builtin = @import("builtin");
 const State = @import("state.zig").State;
 const instruction = @import("instruction.zig");
 const decode = @import("decode.zig");
@@ -28,10 +27,10 @@ pub const Signal = enum { supervisor_call, exception_return, function_return };
 /// What a halted core waits for: WFE waits for an event, WFI for an interrupt, B1.5.18 and B1.5.19.
 pub const Wait = enum { event, interrupt };
 
-/// True on every target but wasm32; selects the inlining mode.
-pub const threaded = builtin.cpu.arch != .wasm32;
-/// Call modifier of the hot path: always inline where threaded.
-pub const inlining: std.builtin.CallModifier = if (threaded) .always_inline else .auto;
+/// Whether the loop's stages are force-inlined, which core's run loop reads to pick its shape.
+pub const threaded = true;
+/// The call modifier the loop's stages use.
+pub const inlining: std.builtin.CallModifier = .always_inline;
 
 /// What one step produced: the code, class, cycles, branch and any halt.
 pub const Result = packed struct(u64) {

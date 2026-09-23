@@ -3,6 +3,10 @@
 //! decode, disassembly and metadata modules, so a consumer imports one module and reaches every
 //! architecture through it.
 
+comptime {
+    if (@bitSizeOf(usize) != 64) @compileError("isa is a host library for 64-bit machines");
+}
+
 /// Host requirement lists and the comptime check a host is held to.
 pub const contract = @import("contract.zig");
 /// Arm T32 instruction set: state, decode groups and step.

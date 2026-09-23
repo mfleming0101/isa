@@ -66,7 +66,8 @@ tabled in [INTERFACE.md](INTERFACE.md).
 
 ## Building
 
-Requires Zig 0.16.0 and nothing else.
+Requires Zig 0.16.0 and nothing else. The library is built for 64-bit host machines and
+fails to compile on 32-bit targets, so it is not meant to run on an MCU.
 
 ```sh
 zig build test        # unit, spec and example tests

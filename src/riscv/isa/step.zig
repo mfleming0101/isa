@@ -5,7 +5,6 @@
 //! the processor turns into an mcause. `call` runs a code already in hand, which is what a row's
 //! own test drives.
 const std = @import("std");
-const builtin = @import("builtin");
 const State = @import("state.zig").State;
 const instruction = @import("instruction.zig");
 const decode = @import("decode.zig");
@@ -26,10 +25,10 @@ pub const Stop = enum(u4) { breakpoint, unimplemented, unrecoverable_trap };
 /// The synchronous exceptions a row raises, named for what happened rather than the code.
 pub const Trap = enum(u4) { none, instruction_access_fault, illegal_instruction, load_access_fault, store_access_fault, environment_call };
 
-/// Whether the loop's stages are force-inlined, which every target but wasm32 gets.
-pub const threaded = builtin.cpu.arch != .wasm32;
-/// The call modifier the loop's stages use: always_inline where threaded.
-pub const inlining: std.builtin.CallModifier = if (threaded) .always_inline else .auto;
+/// Whether the loop's stages are force-inlined, which core's run loop reads to pick its shape.
+pub const threaded = true;
+/// The call modifier the loop's stages use.
+pub const inlining: std.builtin.CallModifier = .always_inline;
 
 /// One step's outcome in a 64-bit word: code, class, cycles, branch, stop or trap.
 pub const Result = packed struct(u64) {
