@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
         .name = "gen-tree",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/gen/main.zig"),
-            .target = target,
+            .target = b.graph.host,
             .optimize = optimize,
             .imports = &.{.{ .name = "spec", .module = spec }},
         }),
