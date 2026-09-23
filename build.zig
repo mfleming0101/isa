@@ -132,7 +132,7 @@ pub fn build(b: *std.Build) void {
             .root_module = b.createModule(.{
                 .root_source_file = b.path(t.root),
                 .target = target,
-                .optimize = .Debug,
+                .optimize = .ReleaseSafe,
                 .imports = &bench_imports,
             }),
         });
