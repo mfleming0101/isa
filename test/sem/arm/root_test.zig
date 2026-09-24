@@ -4,9 +4,9 @@
 //! src/tests.zig.
 const std = @import("std");
 const decode = @import("arm_decode");
-const sem = @import("root.zig");
+const sem = @import("../../../src/sem/arm/root.zig");
 
-const Host = @import("../../host/arm.zig").Host;
+const Host = @import("../../../src/host/arm.zig").Host;
 const groups: u32 = 0b111;
 
 fn decodeWide(s: *sem.State, host: *Host, code: u32) sem.Outcome {

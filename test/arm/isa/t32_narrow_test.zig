@@ -2,11 +2,11 @@
 //! data processing, flags, loads and stores, stack operations, branches and the
 //! system rows.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
-const Architecture = @import("architecture.zig").Architecture;
-const decode = @import("decode.zig");
-const step = @import("step.zig");
+const State = @import("../../../src/arm/isa/state.zig").State;
+const instruction = @import("../../../src/arm/isa/instruction.zig");
+const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
+const decode = @import("../../../src/arm/isa/decode.zig");
+const step = @import("../../../src/arm/isa/step.zig");
 const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
 
 const Mem = struct {

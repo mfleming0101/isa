@@ -3,10 +3,10 @@
 //! by that row or undefined.
 const std = @import("std");
 const decode = @import("riscv_decode");
-const sem = @import("root.zig");
+const sem = @import("../../../src/sem/riscv/root.zig");
 
-const Host = @import("../../host/riscv.zig").Host;
-const allowed = @import("../../riscv/isa/decode.zig").every;
+const Host = @import("../../../src/host/riscv.zig").Host;
+const allowed = @import("../../../src/riscv/isa/decode.zig").every;
 
 fn run(s: *sem.State, memory: []u8, code: u32) sem.Outcome {
     var host: Host = .{ .memory = .{ .bytes = memory, .base = 0 } };

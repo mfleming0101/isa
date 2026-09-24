@@ -2,14 +2,14 @@
 //! branches, breakpoints, undefined and unimplemented codes, fetch and data faults,
 //! alignment, IT blocks, BTI landing and the branch future instructions.
 const std = @import("std");
-const State = @import("state.zig").State;
-const step = @import("step.zig");
+const State = @import("../../../src/arm/isa/state.zig").State;
+const step = @import("../../../src/arm/isa/step.zig");
 const Stop = step.Stop;
 const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
-const Architecture = @import("architecture.zig").Architecture;
-const instruction = @import("instruction.zig");
+const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
+const instruction = @import("../../../src/arm/isa/instruction.zig");
 const Class = instruction.Class;
-const decode = @import("decode.zig");
+const decode = @import("../../../src/arm/isa/decode.zig");
 
 const Mem = struct {
     const Self = @This();

@@ -5,14 +5,14 @@
 //! and checks registers, memory, FPSCR and VPR. Run with `zig build test`.
 
 const std = @import("std");
-const State = @import("state.zig").State;
-const step = @import("step.zig");
+const State = @import("../../../src/arm/isa/state.zig").State;
+const step = @import("../../../src/arm/isa/step.zig");
 const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
-const instruction = @import("instruction.zig");
-const Architecture = @import("architecture.zig").Architecture;
-const decode = @import("decode.zig");
-const mve = @import("mve.zig");
-const fp = @import("fp.zig");
+const instruction = @import("../../../src/arm/isa/instruction.zig");
+const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
+const decode = @import("../../../src/arm/isa/decode.zig");
+const mve = @import("../../../src/arm/isa/mve.zig");
+const fp = @import("../../../src/arm/isa/fp.zig");
 
 const Machine = struct {
     const Self = @This();

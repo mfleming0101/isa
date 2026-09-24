@@ -3,11 +3,11 @@
 //! each of the three, unanswered atomics, the ignored aq and rl bits, rendering, and that the A
 //! rows belong to a group of their own.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
-const decode = @import("decode.zig");
-const csr = @import("csr.zig");
-const step = @import("step.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
 const disasm = @import("riscv_disasm");
 const tree = @import("riscv_decode");
 

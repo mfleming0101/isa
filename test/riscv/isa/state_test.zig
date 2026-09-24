@@ -1,7 +1,7 @@
 //! Tests of `State`: x0 reads zero however it is written and every other register keeps its value,
 //! section 2.1.
 const std = @import("std");
-const State = @import("state.zig").State;
+const State = @import("../../../src/riscv/isa/state.zig").State;
 
 test "x0 reads as zero however often it is written, section 2.1" {
     var s: State = .{};

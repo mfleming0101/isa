@@ -2,12 +2,12 @@
 //! cycle charging, fetch and decode faults, EBREAK stops, ECALL traps, load and store fault codes,
 //! and the size of `Result`.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
 const Class = instruction.Class;
-const decode = @import("decode.zig");
-const csr = @import("csr.zig");
-const step = @import("step.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
 
 const costs: step.Model.Costs = blk: {
     var out: step.Model.Costs = @splat(.{ .cycles = 1, .taken = 0 });
@@ -75,7 +75,7 @@ const Rom = struct {
     const Self = @This();
 
     comptime {
-        @import("../../contract.zig").assertHost(Self, &@import("../../contract.zig").riscv_requirements);
+        @import("../../../src/contract.zig").assertHost(Self, &@import("../../../src/contract.zig").riscv_requirements);
     }
 
     image: *const [8]u8,

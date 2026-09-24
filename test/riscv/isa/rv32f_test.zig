@@ -2,12 +2,12 @@
 //! NaN and infinity handling, FCLASS, comparisons, conversions, sign injection, transfers, single
 //! rounding of the fused rows, mstatus.FS gating, and the fcsr layout.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
-const decode = @import("decode.zig");
-const csr = @import("csr.zig");
-const step = @import("step.zig");
-const fp = @import("../../sem/riscv/fp.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
+const fp = @import("../../../src/sem/riscv/fp.zig");
 
 const Mem = struct {
     /// Every group, so each row decodes.

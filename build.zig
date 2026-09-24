@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     attachGenerated(b, isa, emitted, target, optimize);
 
     const unit_module = b.createModule(.{
-        .root_source_file = b.path("src/tests.zig"),
+        .root_source_file = b.path("tests.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &imports,

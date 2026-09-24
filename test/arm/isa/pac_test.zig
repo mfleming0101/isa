@@ -2,7 +2,7 @@
 //! pointer, the modifier and every key word, still varies under a zero key, and spreads
 //! a one-bit change across the result.
 const std = @import("std");
-const pac = @import("pac.zig");
+const pac = @import("../../../src/arm/isa/pac.zig");
 
 const key: [4]u32 = .{ 0x0123_4567, 0x89ab_cdef, 0xfedc_ba98, 0x7654_3210 };
 

@@ -2,7 +2,7 @@
 //! branchTo splitting the T bit from the address, the flag setters, and the alignment
 //! a stack pointer write enforces.
 const std = @import("std");
-const State = @import("state.zig").State;
+const State = @import("../../../src/arm/isa/state.zig").State;
 
 test "the stack pointer is MSP or PSP as CONTROL.SPSEL selects, B1.4.1" {
     var s: State = .{ .msp = 0x2000_1000, .psp = 0x2000_2000 };

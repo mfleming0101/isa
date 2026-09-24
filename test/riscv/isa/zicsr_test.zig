@@ -3,12 +3,12 @@
 //! mstatus, mtvec and mepc masking, MRET, WFI, rendering, and the model fields mie, mip and mcause
 //! are decided by.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
-const decode = @import("decode.zig");
-const step = @import("step.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
 const disasm = @import("riscv_disasm");
-const csr = @import("csr.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
 
 const Mem = struct {
     /// Every group, so each row decodes.

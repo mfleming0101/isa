@@ -3,11 +3,11 @@
 //! model that answers one and under a model that refuses it, unanswered accesses, FENCE, ECALL and
 //! EBREAK. Registered in `src/tests.zig`.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
-const decode = @import("decode.zig");
-const csr = @import("csr.zig");
-const step = @import("step.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
 
 /// A 64-byte stub memory that answers every requirement a row can call.
 pub const Mem = struct {

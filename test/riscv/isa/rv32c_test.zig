@@ -3,12 +3,12 @@
 //! points, HINTs, unallocated encodings, mixed-width streams, cycle classes, group selection and
 //! rendering.
 const std = @import("std");
-const State = @import("state.zig").State;
-const instruction = @import("instruction.zig");
+const State = @import("../../../src/riscv/isa/state.zig").State;
+const instruction = @import("../../../src/riscv/isa/instruction.zig");
 const Class = instruction.Class;
-const decode = @import("decode.zig");
-const csr = @import("csr.zig");
-const step = @import("step.zig");
+const decode = @import("../../../src/riscv/isa/decode.zig");
+const csr = @import("../../../src/riscv/isa/csr.zig");
+const step = @import("../../../src/riscv/isa/step.zig");
 const disasm = @import("riscv_disasm");
 const tree = @import("riscv_decode");
 

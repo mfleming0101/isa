@@ -2,16 +2,16 @@
 //! exclusive monitor and address attribution: branches, data processing, loads and
 //! stores, system instructions, DSP, long shifts and the Armv8-M security rows.
 const std = @import("std");
-const State = @import("state.zig").State;
-const decode = @import("decode.zig");
-const fp = @import("fp.zig");
-const instruction = @import("instruction.zig");
-const step = @import("step.zig");
+const State = @import("../../../src/arm/isa/state.zig").State;
+const decode = @import("../../../src/arm/isa/decode.zig");
+const fp = @import("../../../src/arm/isa/fp.zig");
+const instruction = @import("../../../src/arm/isa/instruction.zig");
+const step = @import("../../../src/arm/isa/step.zig");
 const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
 const sau = struct {
     const Attribution = struct { ns: bool, nsc: bool = false, region: ?u8 = null };
 };
-const Architecture = @import("architecture.zig").Architecture;
+const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
 
 /// Test host with memory, a decode model, banked state and the fitted extensions.
 pub const Mem = struct {
