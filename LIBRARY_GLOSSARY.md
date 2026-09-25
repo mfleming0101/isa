@@ -42,7 +42,7 @@ library's Arm machine, its RISC-V machine, or the empty `nullisa` machine.
 The facade is [bench/harness/facade.zig#L38](bench/harness/facade.zig#L38). The bench prose says
 "alternative", never "arm", which belongs to the architecture.
 
-See also: [Harness](#harness), [Metrics](#metrics), [Variant](#variant).
+See also: [Harness](#harness), [Metrics](#metrics).
 
 ## Architecture
 
@@ -432,7 +432,7 @@ The schema is [bench/harness/metrics.zig#L9](bench/harness/metrics.zig#L9); the 
 The schema type is `metrics.Summary`, not `Row`, because `bench/run.zig` imports both it and the
 spec's [row](#row).
 
-See also: [Harness](#harness), [Alternative](#alternative), [Variant](#variant), [Row](#row).
+See also: [Harness](#harness), [Alternative](#alternative), [Row](#row).
 
 ## misa
 
@@ -820,16 +820,6 @@ The generator's record for one architecture is `Architecture`
 
 See also: [Leaf](#leaf), [Gate](#gate), [Guard](#guard), [Generated](#generated),
 [Index](#index).
-
-## Variant
-
-The `key=value` knobs of one bench run, recorded in its own [metrics](#metrics) column so two rows
-of the same [alternative](#alternative) measured under different settings stay distinguishable.
-Distinct from an alternative, which is a whole implementation.
-
-`validVariant`, [bench/harness/metrics.zig#L72](bench/harness/metrics.zig#L72).
-
-See also: [Alternative](#alternative), [Metrics](#metrics).
 
 ## Zicsr
 

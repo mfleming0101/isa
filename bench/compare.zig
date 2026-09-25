@@ -1,12 +1,11 @@
-//! Renders the latest admissible row of every variant side by side, behind `zig build compare
-//! [summary.tsv ...]`. Columns are matched by header name rather than position, a row that failed
-//! its gates never displaces an earlier admissible one, and columns a partial row may not carry are
-//! shown as a dash.
+//! Renders the latest admissible row of every commit side by side, behind `zig build compare
+//! [summary.tsv ...]`. Columns are matched by header name rather than position, and a row that
+//! failed its gates never displaces an earlier admissible one.
 
 const std = @import("std");
 const metrics = @import("harness").metrics;
 
-/// Reads the summaries, keeps each variant's latest admissible row and prints them as columns.
+/// Reads the summaries, keeps each commit's latest admissible row and prints them as columns.
 pub fn main(init: std.process.Init) !void {
     const gpa = init.arena.allocator();
     var args = try std.process.Args.Iterator.initAllocator(init.minimal.args, gpa);
@@ -19,7 +18,6 @@ pub fn main(init: std.process.Init) !void {
     var names: []const []const u8 = &.{};
     var labels: std.ArrayList([]const u8) = .empty;
     var rows: std.ArrayList([]const []const u8) = .empty;
-    var states: std.ArrayList(metrics.Status) = .empty;
 
     for (paths.items) |path| {
         const text = try std.Io.Dir.cwd().readFileAlloc(init.io, path, gpa, .limited(64 << 20));
@@ -32,17 +30,13 @@ pub fn main(init: std.process.Init) !void {
             if (fields.len != names.len) continue;
             const state = std.meta.stringToEnum(metrics.Status, fields[column(names, "status") orelse continue]) orelse continue;
             if (state == .fail) continue;
-            const label = fields[column(names, "variant") orelse continue];
+            const label = fields[column(names, "commit") orelse continue];
             const at = find(labels.items, label) orelse blk: {
                 try labels.append(gpa, label);
                 try rows.append(gpa, fields);
-                try states.append(gpa, state);
                 break :blk null;
             };
-            if (at) |i| {
-                rows.items[i] = fields;
-                states.items[i] = state;
-            }
+            if (at) |i| rows.items[i] = fields;
         }
     }
     if (labels.items.len == 0) return error.NoRows;
@@ -66,7 +60,7 @@ pub fn main(init: std.process.Init) !void {
 
     for (names, 0..) |name, i| {
         try out.print("{s: <[1]}", .{ name, label });
-        for (rows.items, states.items, widths) |row, state, width| try out.print("  {s: <[1]}", .{ if (metrics.admits(state, name)) row[i] else "-", width });
+        for (rows.items, widths) |row, width| try out.print("  {s: <[1]}", .{ row[i], width });
         try out.writeByte('\n');
     }
 }

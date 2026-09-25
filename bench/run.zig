@@ -7,7 +7,6 @@
 
 const std = @import("std");
 const harness = @import("harness");
-const spec = @import("spec");
 
 const metrics = harness.metrics;
 const corpus = harness.corpus;
@@ -16,8 +15,6 @@ const Oracle = struct { match: u32 = 0, total: u32 = 0, skipped: u32 = 0 };
 
 
 const Options = struct {
-    variant: []const u8 = "",
-    knobs: []const []const u8 = &.{},
     optimize: []const u8 = "ReleaseFast",
     runs: usize = 5,
     budget: u64 = 4_000_000_000,
@@ -26,7 +23,6 @@ const Options = struct {
     lockstep: bool = true,
     loop_instrs: u64 = 20_000_000,
     decode_reps: u64 = 2_000,
-    cpu_mhz: f64 = 0,
     pin: ?u16 = null,
     release: bool = false,
 };
@@ -41,16 +37,10 @@ pub fn main(init: std.process.Init) !void {
     while (args.next()) |flag| {
         if (std.mem.eql(u8, flag, "--optimize")) {
             options.optimize = args.next() orelse return usage(init);
-        } else if (std.mem.eql(u8, flag, "--variant")) {
-            options.variant = args.next() orelse return usage(init);
-            if (!metrics.validVariant(options.variant)) return usage(init);
-            options.knobs = try knobsOf(gpa, options.variant);
         } else if (std.mem.eql(u8, flag, "--runs")) {
             options.runs = try std.fmt.parseInt(usize, args.next() orelse return usage(init), 10);
         } else if (std.mem.eql(u8, flag, "--pin")) {
             options.pin = try std.fmt.parseInt(u16, args.next() orelse return usage(init), 10);
-        } else if (std.mem.eql(u8, flag, "--cpu-mhz")) {
-            options.cpu_mhz = try std.fmt.parseFloat(f64, args.next() orelse return usage(init));
         } else if (std.mem.eql(u8, flag, "--warm")) {
             options.cold = false;
         } else if (std.mem.eql(u8, flag, "--no-sweep")) {
@@ -95,15 +85,11 @@ pub fn main(init: std.process.Init) !void {
     var row = metrics.Summary{
         .date = try today(init, gpa),
         .commit = describe(init, gpa),
-        .variant = options.variant,
         .target = @tagName(@import("builtin").target.cpu.arch) ++ "-" ++ @tagName(@import("builtin").target.os.tag),
         .optimize = options.optimize,
         .zig = @import("builtin").zig_version_string,
-        .cpu_mhz = if (options.cpu_mhz != 0) options.cpu_mhz else cpuMhz(init, gpa),
         .status = .fail,
 
-        .ambiguity_pairs = spec.schema.ambiguities(spec.arm) + spec.schema.ambiguities(spec.riscv),
-        .totality_holes = swept.holes,
         .decode_sweep_arm = swept.arm,
         .decode_sweep_rv = swept.riscv,
         .vectors_pass = vectors.passed,
@@ -127,8 +113,6 @@ pub fn main(init: std.process.Init) !void {
 
         .obj_text = size.text,
         .obj_rodata = size.rodata,
-        .obj_data = size.data,
-        .obj_bss = size.bss,
         .link_delta_bytes = size.link_delta,
         .runtime_heap_peak = detail.heap_peak,
         .bytes_per_row = if (about.rows_total == 0) 0 else @as(f64, @floatFromInt(size.text + size.rodata)) / @as(f64, @floatFromInt(about.rows_total)),
@@ -138,11 +122,6 @@ pub fn main(init: std.process.Init) !void {
         .gen_s = gen_s,
 
         .host_decls_required = about.host_required,
-        .host_decls_optional = about.host_optional,
-        .host_types_imported = about.imported_types,
-
-        .rows_implemented = about.rows_implemented,
-        .rows_total = about.rows_total,
         .spec_sha = try digestOf(init, gpa, &.{ "spec/schema.zig", "spec/arm/t32_narrow.zon", "spec/arm/t32_wide.zon", "spec/riscv/rv32i.zon", "spec/riscv/rv32m.zon", "spec/riscv/rv32c.zon" }),
         .stub_sha = try digestOf(init, gpa, &.{"host/memory.zig"}),
         .corpus_sha = try corpusDigest(init, gpa),
@@ -159,22 +138,15 @@ pub fn main(init: std.process.Init) !void {
 
 fn usage(init: std.process.Init) !void {
     _ = init;
-    std.debug.print("bench/run.zig [--variant <k=v;k=v>] [--optimize <mode>] [--runs <n>] [--warm] [--no-sweep] [--no-lockstep] [--cpu-mhz <mhz>] [--pin <cpu>] [--release]\n", .{});
+    std.debug.print("bench/run.zig [--optimize <mode>] [--runs <n>] [--warm] [--no-sweep] [--no-lockstep] [--pin <cpu>] [--release]\n", .{});
     std.process.exit(2);
 }
 
-fn knobsOf(gpa: std.mem.Allocator, variant: []const u8) ![]const []const u8 {
-    var out: std.ArrayList([]const u8) = .empty;
-    var pairs = std.mem.splitScalar(u8, variant, ';');
-    while (pairs.next()) |pair| try out.append(gpa, try std.fmt.allocPrint(gpa, "-D{s}", .{pair}));
-    return out.items;
-}
 
-fn zigBuild(gpa: std.mem.Allocator, options: Options, args: []const []const u8) ![]const []const u8 {
+fn zigBuild(gpa: std.mem.Allocator, args: []const []const u8) ![]const []const u8 {
     var out: std.ArrayList([]const u8) = .empty;
     try out.appendSlice(gpa, &.{ "zig", "build" });
     try out.appendSlice(gpa, args);
-    try out.appendSlice(gpa, options.knobs);
     return out.items;
 }
 
@@ -186,7 +158,7 @@ fn rebuild(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !Bu
 
     const started = std.Io.Timestamp.now(init.io, .awake);
     var child = try std.process.spawn(init.io, .{
-        .argv = try zigBuild(gpa, options, &.{
+        .argv = try zigBuild(gpa, &.{
             "bench",
             try std.fmt.allocPrint(gpa, "-Doptimize={s}", .{options.optimize}),
             "--cache-dir",
@@ -286,7 +258,7 @@ fn once(init: std.process.Init, gpa: std.mem.Allocator, argv: []const []const u8
     return out;
 }
 
-const Sizes = struct { text: u64 = 0, rodata: u64 = 0, data: u64 = 0, bss: u64 = 0, link_delta: i64 = 0 };
+const Sizes = struct { text: u64 = 0, rodata: u64 = 0, link_delta: i64 = 0 };
 
 fn sizes(init: std.process.Init, gpa: std.mem.Allocator) !Sizes {
     var out: Sizes = .{};
@@ -296,8 +268,6 @@ fn sizes(init: std.process.Init, gpa: std.mem.Allocator) !Sizes {
         const section = try harness.elf.sizes(try read(init, gpa, object));
         out.text += section.text;
         out.rodata += section.rodata;
-        out.data += section.data;
-        out.bss += section.bss;
 
         const linked = try std.fmt.allocPrint(gpa, "zig-out/bin/consumer-{s}", .{which});
         if (!present(init, linked) or !present(init, "zig-out/bin/consumer-null")) continue;
@@ -308,11 +278,8 @@ fn sizes(init: std.process.Init, gpa: std.mem.Allocator) !Sizes {
 }
 
 const About = struct {
-    rows_implemented: u32 = 0,
     rows_total: u32 = 0,
-    imported_types: u32 = 0,
     host_required: u32 = 0,
-    host_optional: u32 = 0,
 };
 
 fn interface(init: std.process.Init, gpa: std.mem.Allocator) !About {
@@ -332,11 +299,8 @@ fn interface(init: std.process.Init, gpa: std.mem.Allocator) !About {
                 if (std.mem.eql(u8, key, f.name)) @field(one, f.name) = value;
             }
         }
-        out.rows_implemented += one.rows_implemented;
         out.rows_total += one.rows_total;
-        out.imported_types += one.imported_types;
         out.host_required = @max(out.host_required, one.host_required);
-        out.host_optional = @max(out.host_optional, one.host_optional);
     }
     return out;
 }
@@ -450,7 +414,7 @@ fn selftest(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !V
     if (options.cold) std.Io.Dir.cwd().deleteTree(init.io, cache) catch {};
 
     const result = try std.process.run(gpa, init.io, .{
-        .argv = try zigBuild(gpa, options, &.{ "test", "--summary", "all", "--cache-dir", cache, "--global-cache-dir", try std.fmt.allocPrint(gpa, "{s}/global", .{cache}) }),
+        .argv = try zigBuild(gpa, &.{ "test", "--summary", "all", "--cache-dir", cache, "--global-cache-dir", try std.fmt.allocPrint(gpa, "{s}/global", .{cache}) }),
     });
     if (result.term != .exited or result.term.exited != 0) return error.TestsFailed;
 
@@ -578,18 +542,6 @@ fn timeDecodes(init: std.process.Init, gpa: std.mem.Allocator, options: Options,
     return @as(f64, @floatFromInt(ns)) / @as(f64, @floatFromInt(count));
 }
 
-fn cpuMhz(init: std.process.Init, gpa: std.mem.Allocator) f64 {
-    const text = read(init, gpa, "/proc/cpuinfo") catch return 0;
-    var lines = std.mem.splitScalar(u8, text, '\n');
-    while (lines.next()) |line| {
-        const at = std.mem.indexOf(u8, line, "MHz") orelse continue;
-        const colon = std.mem.indexOfScalarPos(u8, line, at, ':') orelse continue;
-        return std.fmt.parseFloat(f64, std.mem.trim(u8, line[colon + 1 ..], " \t\r")) catch 0;
-    }
-    const khz = read(init, gpa, "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq") catch return 0;
-    const parsed = std.fmt.parseFloat(f64, std.mem.trim(u8, khz, " \n\r\t")) catch return 0;
-    return parsed / 1000.0;
-}
 
 fn lockstep(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !Oracle {
     var out: Oracle = .{};
@@ -730,7 +682,7 @@ fn oracles(init: std.process.Init, gpa: std.mem.Allocator) !Oracle {
     return out;
 }
 
-const Sweep = struct { arm: bool = false, riscv: bool = false, holes: u32 = 0 };
+const Sweep = struct { arm: bool = false, riscv: bool = false };
 
 fn sweeps(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !Sweep {
     var out: Sweep = .{};
@@ -772,10 +724,7 @@ fn sweeps(init: std.process.Init, gpa: std.mem.Allocator, options: Options) !Swe
             var lines = std.mem.splitScalar(u8, try read(init, gpa, part), '\n');
             while (lines.next()) |raw| {
                 if (raw.len == 0) continue;
-                if (std.mem.startsWith(u8, raw, "holes=")) {
-                    out.holes +|= std.fmt.parseInt(u32, raw["holes=".len..], 10) catch 0;
-                    continue;
-                }
+                if (std.mem.startsWith(u8, raw, "holes=")) continue;
                 try joined.print(gpa, "{s}\n", .{raw});
             }
         }

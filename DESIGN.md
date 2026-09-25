@@ -137,7 +137,6 @@ the history. The timing columns come from the `consumer` CLI each architecture s
 | `cold_build_s` | Wall time of `zig build` from a clean cache |
 | `gen_s` | Wall time of one generator run into a scratch directory |
 | `host_decls_required` | Entries of the host contract, counted from the requirement lists |
-| `rows_implemented`, `rows_total` | From the generated meta; equal, since the tree carries every row |
 
 The row measured at each release is recorded in
 [bench/release-metrics.tsv](bench/release-metrics.tsv), written by `zig build metrics -- --release`.
