@@ -91,9 +91,9 @@ fn conditioned(comptime Host: type, comptime groups: ?decode.Groups, s: *State, 
         const hw1 = access.fetch(Host, host, s.pc, &held) catch |err| return Result.stopped(null, refused(err));
         if (!t32_wide.lands(Host, host, &held, s.pc, hw1)) return Result.stopped(hw1, .not_branch_target);
     }
-    if (s.xpsr & State.it_mask == 0) return body(Host, groups, s, host, model, false);
-    const result = body(Host, groups, s, host, model, true);
-    if (!result.halted) s.itAdvance();
+    const in_it = s.xpsr & State.it_mask != 0;
+    const result = body(Host, groups, s, host, model, in_it);
+    if (in_it and !result.halted) s.itAdvance();
     return result;
 }
 
@@ -107,7 +107,7 @@ fn escapes(hw1: u16) bool {
     return hw1 >> 11 >= 0x1d;
 }
 
-fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, comptime in_it: bool) Result {
+fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, in_it: bool) Result {
     @setEvalBranchQuota(4000);
     const address = s.pc;
     var held: access.Span(Host) = &.{};
@@ -120,7 +120,7 @@ fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     }
 }
 
-fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, address: u32, hw1: u16, held: *access.Span(Host), comptime in_it: bool) Result {
+fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, address: u32, hw1: u16, held: *access.Span(Host), in_it: bool) Result {
     const hw2 = access.halfword(Host, host, held, address +% 2) catch |err| return Result.stopped(null, refused(err));
     const code = @as(u32, hw1) << 16 | hw2;
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
