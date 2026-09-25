@@ -60,6 +60,7 @@ pub fn write(comptime Host: type, host: *Host, at: u32, comptime width: u8, valu
     if (comptime writable(Host)) {
         const span = host.span(at, .{ .kind = .write, .bytes = width / 8 });
         if (span.len >= width / 8) {
+            @branchHint(.likely);
             std.mem.writeInt(std.meta.Int(.unsigned, width), span[0 .. width / 8], @truncate(value), .little);
             return;
         }
@@ -135,6 +136,7 @@ pub inline fn fetch(comptime Host: type, host: *Host, at: u32, held: *Span(Host)
 /// Second halfword of a 32-bit instruction, from the held span or a fresh fetch.
 pub inline fn halfword(comptime Host: type, host: *Host, held: *Span(Host), at: u32) Failure!u16 {
     if (held.len >= 2) {
+        @branchHint(.likely);
         defer held.* = held.*[2..];
         return std.mem.readInt(u16, held.*[0..2], .little);
     }

@@ -125,7 +125,10 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     const code = @as(u32, hw1) << 16 | hw2;
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
     const done = @call(.always_inline, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding.groups });
-    if (done.outcome == .undefined and absent(Host, host, code)) return Result.stopped(code, .no_coprocessor);
+    if (done.outcome == .undefined and absent(Host, host, code)) {
+        @branchHint(.unlikely);
+        return Result.stopped(code, .no_coprocessor);
+    }
     switch (done.class) {
         inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 4, code, c, done.outcome }),
     }
@@ -174,15 +177,20 @@ fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, a
             host.signal(.function_return);
             return Result.retired(code, class, charge(cycles, cost.taken), true);
         },
-        .breakpoint => return Result.stopped(code, .breakpoint),
-        .unimplemented => return Result.stopped(code, .unimplemented),
-        .data_fault => return Result.stopped(code, .data_fault),
-        .unaligned => return Result.stopped(code, .unaligned_access),
-        .violation => return Result.stopped(code, .data_violation),
-        .secure => return Result.stopped(code, .secure_fault),
-        .divide_by_zero => return Result.stopped(code, .divide_by_zero),
-        .no_coprocessor => return Result.stopped(code, .no_coprocessor),
-        .authentication_failure => return Result.stopped(code, .authentication_failure),
-        .undefined => return Result.stopped(code, .undefined_instruction),
+        .breakpoint, .unimplemented, .data_fault, .unaligned, .violation, .secure, .divide_by_zero, .no_coprocessor, .authentication_failure, .undefined => {
+            @branchHint(.cold);
+            return Result.stopped(code, switch (outcome) {
+                .breakpoint => .breakpoint,
+                .unimplemented => .unimplemented,
+                .data_fault => .data_fault,
+                .unaligned => .unaligned_access,
+                .violation => .data_violation,
+                .secure => .secure_fault,
+                .divide_by_zero => .divide_by_zero,
+                .no_coprocessor => .no_coprocessor,
+                .authentication_failure => .authentication_failure,
+                else => .undefined_instruction,
+            });
+        },
     }
 }

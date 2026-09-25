@@ -121,10 +121,15 @@ fn retire(s: *State, cost: instruction.Cost, address: u32, length: u32, code: u3
             return Result.retired(code, class, cost.cycles, false);
         },
         .branched => return Result.retired(code, class, charge(cost.cycles, cost.taken), true),
-        .breakpoint => return Result.stopped(code, .breakpoint),
-        .unimplemented => return Result.stopped(code, .unimplemented),
-        .environment_call => return Result.trapped(code, .environment_call),
-        .illegal => return Result.trapped(code, .illegal_instruction),
-        .data_fault, .unaligned => return Result.trapped(code, if (class == .load or class == .load_reserved) .load_access_fault else .store_access_fault),
+        .breakpoint, .unimplemented, .environment_call, .illegal, .data_fault, .unaligned => {
+            @branchHint(.cold);
+            return switch (outcome) {
+                .breakpoint => Result.stopped(code, .breakpoint),
+                .unimplemented => Result.stopped(code, .unimplemented),
+                .environment_call => Result.trapped(code, .environment_call),
+                .illegal => Result.trapped(code, .illegal_instruction),
+                else => Result.trapped(code, if (class == .load or class == .load_reserved) .load_access_fault else .store_access_fault),
+            };
+        },
     }
 }
