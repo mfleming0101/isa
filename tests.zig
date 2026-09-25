@@ -5,6 +5,9 @@
 
 /// Semantic layers of this build, as the generated modules import them.
 pub const sem = @import("src/root.zig").sem;
+/// Instruction sets of this build, as the reference hosts under host/ import them.
+pub const arm = @import("src/root.zig").arm;
+pub const riscv = @import("src/root.zig").riscv;
 
 comptime {
     _ = @import("src/gen/prove.zig");

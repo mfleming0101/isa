@@ -8,7 +8,7 @@ const std = @import("std");
 const elf = @import("elf.zig");
 const facade = @import("facade.zig");
 const snapshot = @import("snapshot.zig");
-const stub = @import("isa").host;
+const stub = @import("host");
 const contract = @import("isa").contract;
 
 /// The subcommand grammar, printed on a usage error.

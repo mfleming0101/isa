@@ -37,6 +37,13 @@ pub fn build(b: *std.Build) void {
     });
     attachGenerated(b, isa, emitted, target, optimize);
 
+    const host = b.addModule("host", .{
+        .root_source_file = b.path("host/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{.{ .name = "isa", .module = isa }},
+    });
+
     const unit_module = b.createModule(.{
         .root_source_file = b.path("tests.zig"),
         .target = target,
@@ -44,6 +51,7 @@ pub fn build(b: *std.Build) void {
         .imports = &imports,
     });
     attachGenerated(b, unit_module, emitted, target, optimize);
+    unit_module.addImport("isa", unit_module);
     const unit = b.addTest(.{ .root_module = unit_module });
     const spec_test = b.addTest(.{ .root_module = spec });
     const run_spec = b.addRunArtifact(spec_test);
@@ -61,7 +69,7 @@ pub fn build(b: *std.Build) void {
                 .root_source_file = b.path(b.fmt("examples/{s}.zig", .{name})),
                 .target = target,
                 .optimize = optimize,
-                .imports = &.{.{ .name = "isa", .module = isa }},
+                .imports = &.{ .{ .name = "isa", .module = isa }, .{ .name = "host", .module = host } },
             }),
         });
         examples_step.dependOn(&b.addRunArtifact(example).step);
@@ -72,12 +80,13 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("bench/harness/root.zig"),
         .target = target,
         .optimize = optimize,
-        .imports = &.{.{ .name = "isa", .module = isa }},
+        .imports = &.{ .{ .name = "isa", .module = isa }, .{ .name = "host", .module = host } },
     });
     harness.addAnonymousImport("manifest", .{ .root_source_file = b.path("corpus/manifest.zon") });
 
     const bench_imports = [_]std.Build.Module.Import{
         .{ .name = "isa", .module = isa },
+        .{ .name = "host", .module = host },
         .{ .name = "spec", .module = spec },
         .{ .name = "harness", .module = harness },
     };

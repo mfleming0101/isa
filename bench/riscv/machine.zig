@@ -33,7 +33,7 @@ pub const Machine = struct {
     pub const host_requirements = &isa.contract.riscv_requirements;
 
     /// The reference RISC-V host this machine executes against.
-    pub const Host = isa.host.riscv.Host;
+    pub const Host = @import("host").riscv.Host;
 
     state: State = .{},
     host: Host,

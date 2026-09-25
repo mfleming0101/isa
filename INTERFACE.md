@@ -17,7 +17,6 @@ const isa = @import("isa");
 | `isa.generated.arm_disasm`, `riscv_disasm` | The generated disassembler: `write(w, code, pc, groups)` |
 | `isa.generated.arm_meta`, `riscv_meta` | Row counts and the row name table, indexed like the decoder |
 | `isa.contract` | The host requirement lists and `assertHost` |
-| `isa.host` | A flat `Memory` over the caller's slice, the `size` the bench gives it, and one reference host per architecture |
 | `isa.sem.arm`, `isa.sem.riscv` | The handlers the tree dispatches to, and the `Done` type they return |
 
 Each generated module carries every row of its architecture. Which rows a core accepts is
@@ -45,10 +44,10 @@ chosen per call with a group set, described below, not with a separate module.
 A struct type with the functions in [the host contract](#the-host-contract). The library never
 allocates and keeps no global mutable state.
 
-`src/host/arm.zig` and `src/host/riscv.zig` are complete hosts over the flat memory that
-answer every question with the defaults of a plain core out of reset. Copy one and change the
-answers, or wrap one and override a single answer as
-[`host_contract.zig`](examples/host_contract.zig) does.
+`host/arm.zig` and `host/riscv.zig` are complete hosts over the flat memory that answer every
+question with the defaults of a plain core out of reset. They are the `host` module, separate
+from the library because nothing in it needs them. Copy one and change the answers, or wrap
+one and override a single answer as [`host_contract.zig`](examples/host_contract.zig) does.
 
 ### A group set
 

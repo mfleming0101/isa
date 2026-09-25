@@ -32,7 +32,7 @@ pub const Machine = struct {
     pub const host_requirements = &isa.contract.arm_requirements;
 
     /// The reference Armv7-M host this machine executes against.
-    pub const Host = isa.host.arm.Host;
+    pub const Host = @import("host").arm.Host;
 
     state: State = .{},
     host: Host,

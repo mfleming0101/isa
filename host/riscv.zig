@@ -5,7 +5,7 @@
 //! on it.
 
 const Memory = @import("memory.zig").Memory;
-const csr = @import("../riscv/isa/csr.zig");
+const csr = @import("isa").riscv.csr;
 
 /// Reference host answering riscv_requirements with no protection unit, interrupt controller or
 /// clock gate.

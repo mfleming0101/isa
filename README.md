@@ -101,7 +101,7 @@ over the corpus, the object size of the library and the build times.
 | `src/gen/` | The generator: proofs, tree, emitters |
 | `src/arm/`, `src/riscv/` | State, architecture, CSRs, step loop |
 | `src/sem/` | The semantic handlers each row dispatches to |
-| `src/host/` | Reference hosts over a flat memory, used by the tests and the bench |
+| `host/` | The reference hosts over a flat memory, a module of their own for the tests, examples and bench |
 | `src/contract.zig` | The host requirement lists and the compile-time check |
 | `test/` | The unit tests, mirroring `src/`, rooted at `tests.zig` |
 | `bench/` | The measurement harness, the consumer programs it drives and the timing loops |

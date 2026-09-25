@@ -5,8 +5,8 @@
 //! alternatives on it.
 
 const Memory = @import("memory.zig").Memory;
-const Architecture = @import("../arm/isa/architecture.zig").Architecture;
-const step = @import("../arm/isa/step.zig");
+const Architecture = @import("isa").arm.Architecture;
+const step = @import("isa").arm.step;
 
 /// Reference host answering arm_requirements with the defaults of a plain core out of reset.
 pub const Host = struct {

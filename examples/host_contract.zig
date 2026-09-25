@@ -2,7 +2,7 @@ const std = @import("std");
 const isa = @import("isa");
 
 const Host = struct {
-    inner: isa.host.arm.Host,
+    inner: @import("host").arm.Host,
 
     pub fn span(self: *Host, address: u32, comptime a: anytype) []u8 {
         return self.inner.span(address, a);
@@ -103,6 +103,6 @@ test "a host that traps unaligned accesses turns ldr r0, [r1] at an odd address 
     const done = decode.executeNarrow(Host, &s, &host, ldr, armv7m);
     try std.testing.expectEqual(.unaligned, done.outcome);
 
-    const reference = decode.executeNarrow(isa.host.arm.Host, &s, &host.inner, ldr, armv7m);
+    const reference = decode.executeNarrow(@import("host").arm.Host, &s, &host.inner, ldr, armv7m);
     try std.testing.expectEqual(.next, reference.outcome);
 }

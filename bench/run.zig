@@ -144,7 +144,7 @@ pub fn main(init: std.process.Init) !void {
         .rows_implemented = about.rows_implemented,
         .rows_total = about.rows_total,
         .spec_sha = try digestOf(init, gpa, &.{ "spec/schema.zig", "spec/arm/t32_narrow.zon", "spec/arm/t32_wide.zon", "spec/riscv/rv32i.zon", "spec/riscv/rv32m.zon", "spec/riscv/rv32c.zon" }),
-        .stub_sha = try digestOf(init, gpa, &.{"src/host/memory.zig"}),
+        .stub_sha = try digestOf(init, gpa, &.{"host/memory.zig"}),
         .corpus_sha = try corpusDigest(init, gpa),
         .oracle_sha = try digestOf(init, gpa, &.{ "oracle/disasm_arm.txt", "oracle/disasm_riscv.txt", "oracle/sweep_arm.txt", "oracle/sweep_riscv.txt" }),
     };

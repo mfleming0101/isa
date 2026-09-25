@@ -15,7 +15,7 @@ flag left on the host. One of the three [span contract](#span-contract) entries.
 
 `access`, declared as a requirement in
 [src/contract.zig#L81](src/contract.zig#L81) and implemented by
-[src/host/memory.zig#L27](src/host/memory.zig#L27).
+[host/memory.zig#L27](host/memory.zig#L27).
 
 See also: [Span](#span), [Touch](#touch), [Span contract](#span-contract), [Failure](#failure).
 
@@ -180,7 +180,7 @@ keeps one optional address: in `State.exclusive` for Arm, and in the reference m
 for the shared flat store.
 
 `State.exclusive` at [src/arm/isa/state.zig#L20](src/arm/isa/state.zig#L20), `Memory.monitor` at
-[src/host/memory.zig#L36](src/host/memory.zig#L36).
+[host/memory.zig#L36](host/memory.zig#L36).
 
 See also: [Host](#host), [Class](#class).
 
@@ -338,8 +338,8 @@ configuration questions about the core in front of it, and receives
 [notifications](#notification). The library never allocates and holds no global mutable state.
 
 The requirement lists are in [src/contract.zig](src/contract.zig); complete reference hosts are
-[src/host/arm.zig#L11](src/host/arm.zig#L11) and
-[src/host/riscv.zig#L12](src/host/riscv.zig#L12).
+[host/arm.zig#L12](host/arm.zig#L12) and
+[host/riscv.zig#L12](host/riscv.zig#L12).
 
 The comptime type parameter is `Host` and the value `host`, in `src/sem`, `src/arm`, `src/riscv`
 and the generated code alike. The bench calls its own wrapper a "machine" and imports the
@@ -612,9 +612,9 @@ One of the two complete hosts the library ships over the flat memory, answering 
 [contract](#contract) entry with the defaults of a plain core out of reset. The semantic tests, the
 examples and the bench all run on them; a real host is written by copying one or wrapping one.
 
-[src/host/arm.zig#L11](src/host/arm.zig#L11) and
-[src/host/riscv.zig#L12](src/host/riscv.zig#L12), over
-[src/host/memory.zig#L11](src/host/memory.zig#L11).
+[host/arm.zig#L12](host/arm.zig#L12) and
+[host/riscv.zig#L12](host/riscv.zig#L12), over
+[host/memory.zig#L11](host/memory.zig#L11).
 
 The word "reference" also names the pinned [oracle](#oracle) files. The default RISC-V CSR
 [implementation](#model) is `csr.sail`, after the model it mirrors, rather than a third
@@ -707,7 +707,7 @@ fetch is one lookup and a flat RAM pays nothing per word. A host over a read-onl
 [access](#access).
 
 `span`, declared as a requirement in [src/contract.zig#L80](src/contract.zig#L80) and implemented
-by [src/host/memory.zig#L20](src/host/memory.zig#L20).
+by [host/memory.zig#L20](host/memory.zig#L20).
 
 See also: [Access](#access), [Touch](#touch), [Span contract](#span-contract), [Access
 descriptor](#access-descriptor).
@@ -787,7 +787,7 @@ word. It is what feeds the fault address registers --- MMFAR and BFAR on Arm, `m
 and the trace line. It answers nothing.
 
 `touch`, declared as a requirement in [src/contract.zig#L82](src/contract.zig#L82) and implemented
-by [src/host/memory.zig#L33](src/host/memory.zig#L33).
+by [host/memory.zig#L33](host/memory.zig#L33).
 
 See also: [Span](#span), [Access](#access), [Span contract](#span-contract).
 

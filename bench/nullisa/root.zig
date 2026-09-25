@@ -20,7 +20,7 @@ pub const Machine = struct {
     /// Register the console checksum is read from: r0.
     pub const result_register: u5 = 0;
 
-    memory: isa.host.Memory,
+    memory: @import("host").Memory,
     state: harness.snapshot.Snapshot = .{},
 
     /// Builds a machine with pc at entry and r13 holding the stack pointer.

@@ -1,6 +1,6 @@
 //! Public root of the ISA library. Re-exports the host contract, the Arm T32 and RISC-V RV32
-//! instruction sets, the semantic layers, the reference memory and hosts, and the generated
-//! decode, disassembly and metadata modules, so a consumer imports one module and reaches every
+//! instruction sets, the semantic layers, and the generated decode, disassembly and metadata
+//! modules, so a consumer imports one module and reaches every
 //! architecture through it.
 
 comptime {
@@ -19,17 +19,6 @@ pub const sem = struct {
     pub const arm = @import("sem/arm/root.zig");
     /// RISC-V semantic layer, executed against a host.
     pub const riscv = @import("sem/riscv/root.zig");
-};
-/// Reference memory and hosts answering every requirement with reset defaults.
-pub const host = struct {
-    /// Flat backing store over the caller's slice, with the exclusive monitor's tag.
-    pub const Memory = @import("host/memory.zig").Memory;
-    /// Byte length the bench gives the flat memory, 16 MiB.
-    pub const size = @import("host/memory.zig").size;
-    /// Reference Armv7-M host over the flat memory.
-    pub const arm = @import("host/arm.zig");
-    /// Reference RISC-V host over the flat memory.
-    pub const riscv = @import("host/riscv.zig");
 };
 /// Decode trees, disassemblers and row metadata the generator emits per architecture.
 pub const generated = struct {

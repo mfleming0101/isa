@@ -88,9 +88,9 @@ long enough, otherwise `access`. Alignment rules and fault outcomes live there o
 
 The step loops in `src/arm/isa/step.zig` and `src/riscv/isa/step.zig` wrap the tree with what
 a core does around an instruction: fetch, halfword widening, IT and BTI conditioning on Arm,
-per-class cycle costs, and the `Result` a run loop consumes. The reference hosts in `src/host`
+per-class cycle costs, and the `Result` a run loop consumes. The reference hosts in `host/`
 answer the whole contract with reset defaults over a flat memory, which is whatever slice the
-caller hands it; `isa.host.size` is the 16 MiB the bench allocates. The semantic tests and the
+caller hands it; `host.size` is the 16 MiB the bench allocates. The semantic tests and the
 bench run on them.
 
 ## What the tests hold

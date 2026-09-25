@@ -5,7 +5,7 @@ const std = @import("std");
 const decode = @import("riscv_decode");
 const sem = @import("../../../src/sem/riscv/root.zig");
 
-const Host = @import("../../../src/host/riscv.zig").Host;
+const Host = @import("../../../host/riscv.zig").Host;
 const allowed = @import("../../../src/riscv/isa/decode.zig").every;
 
 fn run(s: *sem.State, memory: []u8, code: u32) sem.Outcome {

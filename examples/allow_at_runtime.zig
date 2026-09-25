@@ -8,7 +8,7 @@ test "udiv is Armv7-M; a Cortex-M0 has no divider" {
     const m4 = comptime isa.arm.decode.only(&.{ .v6m, .v7m, .main, .dsp });
 
     var ram = [_]u8{0} ** 64;
-    var host: isa.host.arm.Host = .{ .memory = .{ .bytes = &ram, .base = 0 } };
+    var host: @import("host").arm.Host = .{ .memory = .{ .bytes = &ram, .base = 0 } };
     var s: isa.arm.State = .{};
     s.r[1] = 6;
     s.r[2] = 3;
@@ -25,7 +25,7 @@ test "mul is the M extension" {
     const rv32im = comptime isa.riscv.decode.only(&.{ .rv32i, .m });
 
     var ram = [_]u8{0} ** 64;
-    var host: isa.host.riscv.Host = .{ .memory = .{ .bytes = &ram, .base = 0 } };
+    var host: @import("host").riscv.Host = .{ .memory = .{ .bytes = &ram, .base = 0 } };
     var s: isa.riscv.State = .{};
     s.x[11] = 6;
     s.x[12] = 7;
