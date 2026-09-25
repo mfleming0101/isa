@@ -1,4 +1,4 @@
-//! Renders the latest admissible row of every alternative side by side, behind `zig build compare
+//! Renders the latest admissible row of every variant side by side, behind `zig build compare
 //! [summary.tsv ...]`. Columns are matched by header name rather than position, a row that failed
 //! its gates never displaces an earlier admissible one, and columns a partial row may not carry are
 //! shown as a dash.
@@ -6,7 +6,7 @@
 const std = @import("std");
 const metrics = @import("harness").metrics;
 
-/// Reads the summaries, keeps each alternative's latest admissible row and prints them as columns.
+/// Reads the summaries, keeps each variant's latest admissible row and prints them as columns.
 pub fn main(init: std.process.Init) !void {
     const gpa = init.arena.allocator();
     var args = try std.process.Args.Iterator.initAllocator(init.minimal.args, gpa);
@@ -17,7 +17,7 @@ pub fn main(init: std.process.Init) !void {
     if (paths.items.len == 0) try paths.append(gpa, "bench/summary.tsv");
 
     var names: []const []const u8 = &.{};
-    var alts: std.ArrayList([]const u8) = .empty;
+    var labels: std.ArrayList([]const u8) = .empty;
     var rows: std.ArrayList([]const []const u8) = .empty;
     var states: std.ArrayList(metrics.Status) = .empty;
 
@@ -32,11 +32,9 @@ pub fn main(init: std.process.Init) !void {
             if (fields.len != names.len) continue;
             const state = std.meta.stringToEnum(metrics.Status, fields[column(names, "status") orelse continue]) orelse continue;
             if (state == .fail) continue;
-            const alt = fields[column(names, "alt") orelse continue];
-            const variant = fields[column(names, "variant") orelse continue];
-            const label = if (variant.len == 0) alt else try std.fmt.allocPrint(gpa, "{s} {s}", .{ alt, variant });
-            const at = find(alts.items, label) orelse blk: {
-                try alts.append(gpa, label);
+            const label = fields[column(names, "variant") orelse continue];
+            const at = find(labels.items, label) orelse blk: {
+                try labels.append(gpa, label);
                 try rows.append(gpa, fields);
                 try states.append(gpa, state);
                 break :blk null;
@@ -47,12 +45,12 @@ pub fn main(init: std.process.Init) !void {
             }
         }
     }
-    if (alts.items.len == 0) return error.NoRows;
+    if (labels.items.len == 0) return error.NoRows;
 
     var label: usize = 0;
     for (names) |name| label = @max(label, name.len);
-    const widths = try gpa.alloc(usize, alts.items.len);
-    for (alts.items, widths) |alt, *width| width.* = alt.len;
+    const widths = try gpa.alloc(usize, labels.items.len);
+    for (labels.items, widths) |each, *width| width.* = each.len;
     for (rows.items, widths) |row, *width| for (row) |field| {
         width.* = @max(width.*, field.len);
     };
@@ -63,7 +61,7 @@ pub fn main(init: std.process.Init) !void {
     defer out.flush() catch {};
 
     try out.splatByteAll(' ', label);
-    for (alts.items, widths) |alt, width| try out.print("  {s: <[1]}", .{ alt, width });
+    for (labels.items, widths) |each, width| try out.print("  {s: <[1]}", .{ each, width });
     try out.writeByte('\n');
 
     for (names, 0..) |name, i| {

@@ -37,12 +37,10 @@ See also: [Span](#span), [Access](#access).
 ## Alternative
 
 One measured implementation the bench harness drives through the [machine facade](#harness): this
-library's Arm machine, its RISC-V machine, or the empty `nullisa` machine. Each writes one
-[metrics](#metrics) row under its own name.
+library's Arm machine, its RISC-V machine, or the empty `nullisa` machine.
 
-`alt` column of [bench/harness/metrics.zig#L9](bench/harness/metrics.zig#L9); the facade is
-[bench/harness/facade.zig#L38](bench/harness/facade.zig#L38). The bench prose says "alternative",
-never "arm", which belongs to the architecture; the `alt` column keeps its short name.
+The facade is [bench/harness/facade.zig#L38](bench/harness/facade.zig#L38). The bench prose says
+"alternative", never "arm", which belongs to the architecture.
 
 See also: [Harness](#harness), [Metrics](#metrics), [Variant](#variant).
 

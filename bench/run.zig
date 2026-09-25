@@ -14,7 +14,6 @@ const corpus = harness.corpus;
 
 const Oracle = struct { match: u32 = 0, total: u32 = 0, skipped: u32 = 0 };
 
-const alt = "tree";
 
 const Options = struct {
     variant: []const u8 = "",
@@ -96,7 +95,6 @@ pub fn main(init: std.process.Init) !void {
     var row = metrics.Summary{
         .date = try today(init, gpa),
         .commit = describe(init, gpa),
-        .alt = alt,
         .variant = options.variant,
         .target = @tagName(@import("builtin").target.cpu.arch) ++ "-" ++ @tagName(@import("builtin").target.os.tag),
         .optimize = options.optimize,
@@ -153,7 +151,7 @@ pub fn main(init: std.process.Init) !void {
     row.status = metrics.statusOf(row);
 
     try append(init, gpa, if (options.release) "bench/release-metrics.tsv" else "bench/summary.tsv", row);
-    try appendLog(init, gpa, "bench/detail.tsv", "alt\timage\tarch\tns_per_instr\tretired\tstop\tchecksum\tok\n", detail.log);
+    try appendLog(init, gpa, "bench/detail.tsv", "image\tarch\tns_per_instr\tretired\tstop\tchecksum\tok\n", detail.log);
     try out.print("\n", .{});
     try out.writeAll(try metrics.header(try gpa.alloc(u8, 4096)));
     try out.writeAll(try metrics.line(row, try gpa.alloc(u8, 4096)));
@@ -246,8 +244,8 @@ fn measure(init: std.process.Init, gpa: std.mem.Allocator, options: Options, out
             counts[which] += 1;
         }
 
-        try log.print(gpa, "{s}\t{s}\t{s}\t{d:.4}\t{d}\t{s}\t{x:0>8}\t{d}\n", .{
-            alt, image.name, image.arch, per, seen.retired, @tagName(seen.stop), seen.checksum, @intFromBool(ok),
+        try log.print(gpa, "{s}\t{s}\t{d:.4}\t{d}\t{s}\t{x:0>8}\t{d}\n", .{
+            image.name, image.arch, per, seen.retired, @tagName(seen.stop), seen.checksum, @intFromBool(ok),
         });
         try out.print("{s:<6} {s:<9} {d:>8.3} ns/instr  {s}\n", .{ image.arch, image.name, per, if (!steady) "UNSTABLE" else if (ok) "ok" else "MISMATCH" });
     }

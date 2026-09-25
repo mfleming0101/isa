@@ -8,7 +8,6 @@ const metrics = @import("metrics.zig");
 const sample: metrics.Summary = .{
     .date = "2026-09-12",
     .commit = "0000000",
-    .alt = "null",
     .variant = "",
     .target = "x86_64-linux",
     .optimize = "ReleaseFast",
