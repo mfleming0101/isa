@@ -46,7 +46,10 @@ pub fn read(comptime Host: type, host: *Host, at: u32, comptime width: u8, compt
     host.touch(at);
     if (misaligned(Host, host, at, width, strict)) return error.Unaligned;
     const span = host.span(at, .{ .kind = .read, .bytes = width / 8 });
-    if (span.len < width / 8) return extended(try host.access(at, .{ .kind = .read, .bytes = width / 8 }, 0), width, signed);
+    if (span.len < width / 8) {
+        @branchHint(.unlikely);
+        return extended(try host.access(at, .{ .kind = .read, .bytes = width / 8 }, 0), width, signed);
+    }
     return extended(word(span, width), width, signed);
 }
 
@@ -121,6 +124,7 @@ pub fn Run(comptime Host: type) type {
 pub inline fn fetch(comptime Host: type, host: *Host, at: u32, held: *Span(Host)) Failure!u16 {
     const span = host.span(at, .{ .kind = .fetch, .bytes = 2 });
     if (span.len < 2) {
+        @branchHint(.unlikely);
         held.* = &.{};
         return @truncate(try host.access(at, .{ .kind = .fetch, .bytes = 2 }, 0));
     }

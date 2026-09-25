@@ -78,6 +78,7 @@ pub const Model = struct {
 /// replaces the Model's and prunes the tree to it; null decodes with the Model's set.
 pub fn step(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
     if (s.xpsr & model.decoding.xpsr_mask != State.flag_t) {
+        @branchHint(.unlikely);
         if (s.xpsr & State.flag_t == 0) return Result.stopped(null, .not_t32_state);
         return @call(.never_inline, conditioned, .{ Host, groups, s, host, model });
     }

@@ -48,7 +48,10 @@ fn extended(value: u32, comptime width: u8, comptime signed: bool) u32 {
 pub fn read(comptime Host: type, host: *Host, misaligned: Misaligned, at: u32, comptime width: u8, comptime signed: bool) Failure!u32 {
     try check(Host, host, misaligned, at, width);
     const span = host.span(at, .{ .kind = .read, .bytes = width / 8 });
-    if (span.len < width / 8) return extended(host.access(at, .{ .kind = .read, .bytes = width / 8 }, 0) catch return error.DataFault, width, signed);
+    if (span.len < width / 8) {
+        @branchHint(.unlikely);
+        return extended(host.access(at, .{ .kind = .read, .bytes = width / 8 }, 0) catch return error.DataFault, width, signed);
+    }
     return extended(word(span, width), width, signed);
 }
 
@@ -69,6 +72,7 @@ pub fn write(comptime Host: type, host: *Host, misaligned: Misaligned, at: u32, 
 pub fn fetch(comptime Host: type, host: *Host, at: u32, held: *Span(Host)) ?u16 {
     const span = host.span(at, .{ .kind = .fetch, .bytes = 2 });
     if (span.len < 2) {
+        @branchHint(.unlikely);
         held.* = &.{};
         return @truncate(host.access(at, .{ .kind = .fetch, .bytes = 2 }, 0) catch return null);
     }
