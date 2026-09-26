@@ -6,8 +6,17 @@
 /// Kind of instruction a row is, used to price it and count its words.
 pub const Class = enum(u4) { data_processing, load, store, load_multiple, store_multiple, push, pop, pop_pc, branch, branch_link, system, sleep, special_register, barrier, divide };
 
-/// Cycle price of a class: base cycles and the extra charged when taken.
-pub const Cost = packed struct(u16) { cycles: u8, taken: u8 };
+/// UDIV and SDIV cycles as a Cortex-M4 takes them, measured on an STM32G431 in core's oracle/timing_g431.txt: two when either operand is zero, three when the dividend has fewer significant bits than the divisor, else four and one more for each four bits from the divisor's leading one up to the dividend's, both counted.
+pub fn divideCycles(dividend: u32, divisor: u32, signed: bool) u8 {
+    const a = if (signed) @abs(@as(i32, @bitCast(dividend))) else dividend;
+    const b = if (signed) @abs(@as(i32, @bitCast(divisor))) else divisor;
+    if (a == 0 or b == 0) return 2;
+    const n = @as(i8, @clz(b)) - @as(i8, @clz(a)) + 1;
+    return if (n <= 0) 3 else 4 + @as(u8, @intCast(n + 3)) / 4;
+}
+
+/// Cycle price of a class: base cycles, the extra charged when taken, and what each register of its list adds, words.
+pub const Cost = packed struct(u24) { cycles: u8, taken: u8, per_register: u8 };
 
 /// Number of instruction classes, the length of a cost table.
 pub const costs_len = @typeInfo(Class).@"enum".fields.len;

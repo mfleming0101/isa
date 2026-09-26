@@ -5,7 +5,7 @@ const std = @import("std");
 const State = @import("../../../src/arm/isa/state.zig").State;
 const step = @import("../../../src/arm/isa/step.zig");
 const Stop = step.Stop;
-const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
+const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0, .per_register = 1 });
 const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
 const instruction = @import("../../../src/arm/isa/instruction.zig");
 const Class = instruction.Class;
@@ -385,4 +385,62 @@ test "the branch future instructions retire as a NOP, which the manual permits a
         try std.testing.expectEqual(@as(u32, 7), s.r[2]);
         try std.testing.expectEqual(@as(u32, 0), s.lr);
     }
+}
+
+test "divide cycles follow the operands' leading bits as the STM32G431 measured them, signed by magnitude" {
+    const points = [_]struct { a: u32, b: u32, signed: bool, cycles: u8 }{
+        .{ .a = 0, .b = 1, .signed = false, .cycles = 2 },
+        .{ .a = ~@as(u32, 0), .b = 0, .signed = false, .cycles = 2 },
+        .{ .a = 1, .b = 2, .signed = false, .cycles = 3 },
+        .{ .a = 1, .b = 1, .signed = false, .cycles = 5 },
+        .{ .a = 5, .b = 7, .signed = false, .cycles = 5 },
+        .{ .a = 0x1f, .b = 1, .signed = false, .cycles = 6 },
+        .{ .a = 0xffff, .b = 1, .signed = false, .cycles = 8 },
+        .{ .a = ~@as(u32, 0), .b = 0x1f, .signed = false, .cycles = 11 },
+        .{ .a = ~@as(u32, 0), .b = 1, .signed = false, .cycles = 12 },
+        .{ .a = ~@as(u32, 0), .b = 2, .signed = true, .cycles = 3 },
+        .{ .a = 0x8000_0000, .b = 1, .signed = true, .cycles = 12 },
+        .{ .a = 0x7fff_ffff, .b = 0xffff_fff1, .signed = true, .cycles = 11 },
+    };
+    for (points) |p| try std.testing.expectEqual(p.cycles, instruction.divideCycles(p.a, p.b, p.signed));
+}
+
+test "with the divide rule a UDIV is charged by the operands it read, even when it overwrites one" {
+    var m = memory7(&.{ 0xfbb1, 0xf1f2 });
+    m.model.rules.divide = true;
+    var s: State = .{ .xpsr = State.flag_t };
+    s.r[1] = 0xffff;
+    s.r[2] = 1;
+    try std.testing.expectEqual(step.Result.retired(0xfbb1_f1f2, .divide, 8, false), run(&s, &m));
+    try std.testing.expectEqual(@as(u32, 0xffff), s.r[1]);
+}
+
+test "without the divide rule a UDIV costs its class" {
+    var m = memory7(&.{ 0xfbb1, 0xf0f2 });
+    var s: State = .{ .xpsr = State.flag_t };
+    s.r[1] = 0xffff;
+    s.r[2] = 1;
+    try std.testing.expectEqual(step.Result.retired(0xfbb1_f0f2, .divide, 0, false), run(&s, &m));
+}
+
+test "with the straddle rule a taken branch to a 32-bit instruction at a halfword costs a cycle more, and to a 16-bit one nothing" {
+    var wide = memory7(&.{ 0xe001, 0, 0, 0xf000 });
+    wide.model.rules.straddle = true;
+    var s: State = .{ .xpsr = State.flag_t };
+    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 1, true), run(&s, &wide));
+    var narrow = memory7(&.{ 0xe001, 0, 0, 0x2001 });
+    narrow.model.rules.straddle = true;
+    s = .{ .xpsr = State.flag_t };
+    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), run(&s, &narrow));
+    var off = memory7(&.{ 0xe001, 0, 0, 0xf000 });
+    s = .{ .xpsr = State.flag_t };
+    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), run(&s, &off));
+}
+
+test "a load multiple charges each register only as much as its class's per-register cost says" {
+    var m = memory(&.{0xc90c});
+    m.model.costs[@intFromEnum(Class.load_multiple)] = .{ .cycles = 1, .taken = 0, .per_register = 0 };
+    var s: State = .{ .xpsr = State.flag_t };
+    s.r[1] = 4;
+    try std.testing.expectEqual(step.Result.retired(0xc90c, .load_multiple, 1, false), run(&s, &m));
 }

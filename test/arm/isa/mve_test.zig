@@ -7,7 +7,7 @@
 const std = @import("std");
 const State = @import("../../../src/arm/isa/state.zig").State;
 const step = @import("../../../src/arm/isa/step.zig");
-const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
+const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0, .per_register = 1 });
 const instruction = @import("../../../src/arm/isa/instruction.zig");
 const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
 const decode = @import("../../../src/arm/isa/decode.zig");

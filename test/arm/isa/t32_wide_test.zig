@@ -7,7 +7,7 @@ const decode = @import("../../../src/arm/isa/decode.zig");
 const fp = @import("../../../src/arm/isa/fp.zig");
 const instruction = @import("../../../src/arm/isa/instruction.zig");
 const step = @import("../../../src/arm/isa/step.zig");
-const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0 });
+const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0, .per_register = 1 });
 const sau = struct {
     const Attribution = struct { ns: bool, nsc: bool = false, region: ?u8 = null };
 };

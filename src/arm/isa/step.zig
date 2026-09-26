@@ -60,10 +60,19 @@ pub const Result = packed struct(u64) {
     }
 };
 
-/// The decode selection and per-class costs one core runs with.
+/// The decode selection, per-class costs and timing rules one core runs with.
 pub const Model = struct {
     decoding: decode.Selection,
     costs: Costs,
+    rules: Rules = .{},
+
+    /// Timing measured on a board that a per-class cost cannot hold.
+    pub const Rules = packed struct {
+        /// UDIV and SDIV cost by their operands, instruction.divideCycles.
+        divide: bool = false,
+        /// A taken branch to a 32-bit instruction that straddles a word costs a cycle more.
+        straddle: bool = false,
+    };
 
     /// Cost table indexed by instruction class.
     pub const Costs = [instruction.costs_len]instruction.Cost;
@@ -116,7 +125,7 @@ fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 2, hw1);
     const done = @call(.always_inline, tree.executeNarrow, .{ Host, s, host, hw1, groups orelse model.decoding.groups });
     switch (done.class) {
-        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.outcome }),
+        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.outcome, model.rules.straddle }),
     }
 }
 
@@ -124,13 +133,19 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     const hw2 = access.halfword(Host, host, held, address +% 2) catch |err| return Result.stopped(null, refused(err));
     const code = @as(u32, hw1) << 16 | hw2;
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
+    const dividing = model.rules.divide and hw1 & 0xffd0 == 0xfb90;
+    const dividend = if (dividing) s.get(@truncate(hw1)) else 0;
+    const divisor = if (dividing) s.get(@truncate(hw2)) else 0;
     const done = @call(.always_inline, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding.groups });
     if (done.outcome == .undefined and absent(Host, host, code)) {
         @branchHint(.unlikely);
         return Result.stopped(code, .no_coprocessor);
     }
     switch (done.class) {
-        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 4, code, c, done.outcome }),
+        inline else => |c| {
+            const cost = if (c == .divide and dividing) instruction.Cost{ .cycles = instruction.divideCycles(dividend, divisor, hw1 & 0x20 == 0), .taken = 0, .per_register = 0 } else model.costOf(c);
+            return @call(.always_inline, retire, .{ Host, s, host, cost, address, 4, code, c, done.outcome, model.rules.straddle });
+        },
     }
 }
 
@@ -156,14 +171,20 @@ fn refused(err: instruction.Failure) Stop {
     };
 }
 
-fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, address: u32, length: u32, code: u32, class: instruction.Class, outcome: instruction.Outcome) Result {
-    const cycles = charge(cost.cycles, instruction.words(class, code));
+fn straddles(comptime Host: type, host: *Host, target: u32) bool {
+    if (target & 2 == 0) return false;
+    var held: access.Span(Host) = &.{};
+    return escapes(access.fetch(Host, host, target, &held) catch return false);
+}
+
+fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, address: u32, length: u32, code: u32, class: instruction.Class, outcome: instruction.Outcome, straddle: bool) Result {
+    const cycles = charge(cost.cycles, instruction.words(class, code) *| cost.per_register);
     switch (outcome) {
         .next => {
             s.pc = address +% length;
             return Result.retired(code, class, cycles, false);
         },
-        .branched => return Result.retired(code, class, charge(cycles, cost.taken), true),
+        .branched => return Result.retired(code, class, charge(charge(cycles, cost.taken), @intFromBool(straddle and straddles(Host, host, s.pc))), true),
         .supervisor_call => {
             s.pc = address +% length;
             host.signal(.supervisor_call);

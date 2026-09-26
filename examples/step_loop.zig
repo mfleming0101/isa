@@ -6,7 +6,7 @@ test "the Arm step loop fetches, decodes, executes and charges one instruction" 
     var ram = [_]u8{ 0x01, 0x20, 0x00, 0xbe } ++ [_]u8{0} ** 60; // movs r0, #1; bkpt #0
     var host: @import("host").arm.Host = .{ .memory = .{ .bytes = &ram, .base = 0 } };
     var s: isa.arm.State = .{};
-    const costs: step.Model.Costs = @splat(.{ .cycles = 1, .taken = 2 });
+    const costs: step.Model.Costs = @splat(.{ .cycles = 1, .taken = 2, .per_register = 1 });
     const model: step.Model = .{ .decoding = isa.arm.decode.selectionOf(.armv7m), .costs = costs };
 
     const first = step.step(@TypeOf(host), null, &s, &host, model);
