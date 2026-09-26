@@ -14,7 +14,7 @@ const Host = struct {
         self.inner.touch(address);
     }
     pub fn trapsUnaligned(_: *Host) bool {
-        return true; // CCR.UNALIGN_TRP set, unlike the reference host
+        return true;
     }
     pub fn architecture(self: *Host) isa.arm.Architecture {
         return self.inner.architecture();
@@ -94,15 +94,15 @@ comptime {
 test "a host that traps unaligned accesses turns ldr r0, [r1] at an odd address into a fault" {
     const decode = isa.generated.arm_decode;
     const armv7m = isa.arm.decode.selectionOf(.armv7m).groups;
-    const ldr: u32 = 0x6808; // ldr r0, [r1]
+    const ldr_r0_r1: u32 = 0x6808;
     var ram = [_]u8{0} ** 64;
     var host: Host = .{ .inner = .{ .memory = .{ .bytes = &ram, .base = 0 } } };
     var s: isa.arm.State = .{};
     s.r[1] = 1;
 
-    const done = decode.executeNarrow(Host, &s, &host, ldr, armv7m);
+    const done = decode.executeNarrow(Host, &s, &host, ldr_r0_r1, armv7m);
     try std.testing.expectEqual(.unaligned, done.outcome);
 
-    const reference = decode.executeNarrow(@import("host").arm.Host, &s, &host.inner, ldr, armv7m);
+    const reference = decode.executeNarrow(@import("host").arm.Host, &s, &host.inner, ldr_r0_r1, armv7m);
     try std.testing.expectEqual(.next, reference.outcome);
 }

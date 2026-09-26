@@ -83,8 +83,8 @@ pub const Model = struct {
     }
 };
 
-/// Executes one instruction at PC on the host and reports the result. A comptime group set
-/// replaces the Model's and prunes the tree to it; null decodes with the Model's set.
+/// Executes one instruction at PC. A comptime group set replaces the Model's and prunes the tree;
+/// null uses the Model's.
 pub fn step(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
     if (s.xpsr & model.decoding.xpsr_mask != State.flag_t) {
         @branchHint(.unlikely);
@@ -155,9 +155,8 @@ fn skip(cost: instruction.Cost, s: *State, address: u32, length: u32, code: u32)
     return Result.retired(code, .data_processing, cost.cycles, false);
 }
 
-/// Executes one instruction from a code in hand under a group set, as a row test does; a code
-/// above a halfword is a 32-bit encoding, since every wide T32 code opens with hw1 at or above
-/// 0xe800.
+/// Executes one instruction from a code in hand under a group set; a code above 0xffff is a 32-bit
+/// encoding.
 pub fn call(comptime Host: type, s: *State, host: *Host, code: u32, groups: decode.Groups) instruction.Outcome {
     const done = if (code > 0xffff) tree.executeWide(Host, s, host, code, groups) else tree.executeNarrow(Host, s, host, code, groups);
     return done.outcome;

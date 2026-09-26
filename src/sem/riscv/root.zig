@@ -19,8 +19,8 @@ pub const Outcome = instruction.Outcome;
 /// The cycle class a row is charged by.
 pub const Class = instruction.Class;
 
-/// One tree leaf's answer: outcome and class. The default is what a code no row of the group set
-/// matches answers: an illegal instruction, section 1.5.
+/// A tree leaf's answer: outcome and class. Defaults to illegal instruction, the answer when no row
+/// matches, section 1.5.
 pub const Done = packed struct(u16) {
     outcome: Outcome = .illegal,
     class: Class = .data_processing,

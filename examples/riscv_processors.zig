@@ -3,41 +3,41 @@ const isa = @import("isa");
 const riscv = isa.riscv.decode;
 const csr = isa.riscv.csr;
 
-const esp32c3 = riscv.only(&.{ .rv32i, .m, .c, .zicsr }); // ESP32-C3: RV32IMC
-const esp32c6 = esp32c3 | riscv.only(&.{.a}); // ESP32-C6: RV32IMAC
-const esp32p4 = esp32c6 | riscv.only(&.{.f}); // ESP32-P4: RV32IMAFC
+const esp32c3 = riscv.only(&.{ .rv32i, .m, .c, .zicsr });
+const esp32c6 = esp32c3 | riscv.only(&.{.a});
+const esp32p4 = esp32c6 | riscv.only(&.{.f});
 
 const esp32c3_csr: csr.Implementation = .{
-    .isa = 0x4010_1104, // misa: MXL 32 with U, M, I and C, C3 TRM Register 1.6
-    .vendor_id = 0x0000_0612, // mvendorid, C3 TRM Register 1.1
-    .architecture_id = 0x8000_0001, // marchid, C3 TRM Register 1.2
-    .implementation_id = 0x0000_0001, // mimpid, C3 TRM Register 1.3
-    .mstatus_writable = 0x0020_1888, // mstatus: MIE, MPIE, MPP and TW, C3 TRM Register 1.5
-    .cause_mask = 0x8000_001f, // mcause: the interrupt flag and a five-bit code, C3 TRM Register 1.10
-    .tvec_base_mask = 0xffff_ff00, // mtvec BASE, aligned to 256 bytes, C3 TRM Register 1.7
-    .tvec_modes = .vectored, // mtvec MODE, read-only 1, C3 TRM Register 1.7
-    .misaligned = .refused, // the data host takes each width at its own alignment, C3 TRM 3.3.1
-    .sc_failure = 1, // the SC.W fail code, C6 TRM 1.15.2.2
-    .interrupt_csrs = false, // no mie or mip, C3 TRM 1.4.1
-    .float = false, // no unit, C3 TRM Register 1.6
+    .isa = 0x4010_1104,
+    .vendor_id = 0x0000_0612,
+    .architecture_id = 0x8000_0001,
+    .implementation_id = 0x0000_0001,
+    .mstatus_writable = 0x0020_1888,
+    .cause_mask = 0x8000_001f,
+    .tvec_base_mask = 0xffff_ff00,
+    .tvec_modes = .vectored,
+    .misaligned = .refused,
+    .sc_failure = 1,
+    .interrupt_csrs = false,
+    .float = false,
 };
 
 const esp32c6_csr: csr.Implementation = blk: {
     var m = esp32c3_csr;
-    m.isa = 0x4010_1105; // misa: the C3's letters with A, C6 TRM Register 1.6
-    m.architecture_id = 0x8000_0002; // marchid, C6 TRM Register 1.2
-    m.implementation_id = 0x0000_0002; // mimpid, C6 TRM Register 1.3
-    m.interrupt_csrs = true; // mie and mip, C6 TRM Registers 1.8 and 1.14
+    m.isa = 0x4010_1105;
+    m.architecture_id = 0x8000_0002;
+    m.implementation_id = 0x0000_0002;
+    m.interrupt_csrs = true;
     break :blk m;
 };
 
 const esp32p4_csr: csr.Implementation = blk: {
     var m = esp32c6_csr;
-    m.isa = 0x4010_1125; // misa: the C6's letters with F, P4 datasheet 4.1.1
-    m.architecture_id = 0x8000_0003; // marchid, P4 datasheet 4.1.1
-    m.implementation_id = 0x0000_0003; // mimpid, P4 datasheet 4.1.1
-    m.mstatus_writable = 0x0020_7888; // mstatus: the C3's fields with FS, since the unit is there
-    m.float = true; // fflags, frm and fcsr, P4 datasheet 4.1.1
+    m.isa = 0x4010_1125;
+    m.architecture_id = 0x8000_0003;
+    m.implementation_id = 0x0000_0003;
+    m.mstatus_writable = 0x0020_7888;
+    m.float = true;
     break :blk m;
 };
 
@@ -48,15 +48,15 @@ fn decodes(code: u32, groups: riscv.Groups) bool {
 }
 
 test "each group set admits what its chip executes" {
-    const mul: u32 = 0x02c5_8533; // mul a0, a1, a2
-    const c_addi: u32 = 0x0505; // c.addi a0, 1
-    const csrr: u32 = 0xf140_2573; // csrr a0, mhartid
-    const amoadd: u32 = 0x00b6_252f; // amoadd.w a0, a1, (a2)
-    const fadd: u32 = 0x00c5_8553; // fadd.s fa0, fa1, fa2
+    const mul_a0_a1_a2: u32 = 0x02c5_8533;
+    const c_addi_a0_1: u32 = 0x0505;
+    const csrr_a0_mhartid: u32 = 0xf140_2573;
+    const amoadd_w_a0_a1_a2: u32 = 0x00b6_252f;
+    const fadd_s_fa0_fa1_fa2: u32 = 0x00c5_8553;
 
-    try std.testing.expect(decodes(mul, esp32c3) and decodes(c_addi, esp32c3) and decodes(csrr, esp32c3));
-    try std.testing.expect(!decodes(amoadd, esp32c3) and decodes(amoadd, esp32c6));
-    try std.testing.expect(!decodes(fadd, esp32c6) and decodes(fadd, esp32p4));
+    try std.testing.expect(decodes(mul_a0_a1_a2, esp32c3) and decodes(c_addi_a0_1, esp32c3) and decodes(csrr_a0_mhartid, esp32c3));
+    try std.testing.expect(!decodes(amoadd_w_a0_a1_a2, esp32c3) and decodes(amoadd_w_a0_a1_a2, esp32c6));
+    try std.testing.expect(!decodes(fadd_s_fa0_fa1_fa2, esp32c6) and decodes(fadd_s_fa0_fa1_fa2, esp32p4));
 }
 
 test "each CSR implementation answers with the part's own information registers" {

@@ -78,8 +78,8 @@ pub const Model = struct {
     }
 };
 
-/// Fetches, decodes, executes and charges one instruction at the program counter. A comptime
-/// group set replaces the Model's and prunes the tree to it; null decodes with the Model's set.
+/// Executes and charges one instruction. A comptime group set replaces the Model's and prunes the
+/// tree; null uses the Model's.
 pub fn step(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model) Result {
     return @call(.always_inline, body, .{ Host, groups, s, host, model });
 }
@@ -104,8 +104,7 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     }
 }
 
-/// Runs a code in hand through the tree under a group set; illegal where no leaf claims it. The
-/// escape bits of the first parcel say which width the code is, as they do for the disassembler.
+/// Runs a code under a group set, illegal if no leaf claims it; its escape bits give its width.
 pub fn call(comptime Host: type, s: *State, host: *Host, code: u32, groups: decode.Groups) instruction.Outcome {
     const done = if (decode.escapes(code))
         tree.executeWide(Host, s, host, code, groups)

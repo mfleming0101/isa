@@ -31,8 +31,8 @@ pub fn optional(comptime reqs: []const Requirement) usize {
     }
 }
 
-/// Compile error unless Host declares every requirement in the spelled shape; *anyopaque stands for
-/// Host, anyerror for its errors, and a []u8 answer is also met by a []const u8 one.
+/// Compile error unless Host declares every requirement; *anyopaque means Host, anyerror its
+/// errors, and []const u8 meets []u8.
 pub fn assertHost(comptime Host: type, comptime reqs: []const Requirement) void {
     inline for (reqs) |r| {
         if (!@hasDecl(Host, r.name)) {

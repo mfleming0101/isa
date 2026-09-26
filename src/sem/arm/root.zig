@@ -26,8 +26,8 @@ pub const Class = instruction.Class;
 /// Errors a memory access can raise: DataFault, Unaligned, Violation, Secure.
 pub const Failure = instruction.Failure;
 
-/// One generated-tree leaf's answer: the outcome and the row's cost class. The default is what a
-/// code no row of the group set matches answers: UNDEFINED, A5.3.
+/// A tree leaf's answer: outcome and cost class. Defaults to UNDEFINED, the answer when no row
+/// matches, A5.3.
 pub const Done = packed struct(u16) {
     outcome: Outcome = .undefined,
     class: Class = .data_processing,
