@@ -1,8 +1,8 @@
 #!/bin/sh
-# Builds every corpus image for both architectures into out/<arch>/<name>.elf with zig cc: the
+# Builds every corpus image for both architectures into out/<arch>/<name>.elf with zig: the
 # programs in src/, CoreMark, and the Embench suite. CoreMark and Embench are fetched at pinned
-# commits into third_party/ rather than vendored. ROUNDS, ITERATIONS and the Embench scale factors
-# are fixed so every image retires the instruction count the manifest pins.
+# commits into third_party/ rather than vendored. The programs' rounds, ITERATIONS and the Embench
+# scale factors are fixed so every image retires the instruction count the manifest pins.
 set -eu
 cd "$(dirname "$0")"
 zig=${ZIG:-zig}
@@ -13,6 +13,7 @@ arm_flags="--target=thumb-freestanding-eabi -mcpu=cortex_m3"
 riscv_flags="--target=riscv32-freestanding-none -mcpu=generic_rv32+m+c"
 riscv_f_flags="--target=riscv32-freestanding-none -mcpu=generic_rv32+m+c+f"
 common="-Os -g0 -ffreestanding -nostdlib -fno-sanitize=undefined -fno-builtin -Wall"
+zig_common="-O ReleaseSmall -fno-builtin -fsingle-threaded -fstrip -fno-unwind-tables"
 
 # Fills CoreMark's three #error stubs: bench_clock as the clock, no board init, printf into the console.
 patch_coremark() {
@@ -34,27 +35,38 @@ if [ ! -d "$coremark" ]; then
 fi
 
 # Links one image: arch, name, then compiler flags and sources, over the port's start code, linker
-# script and port.c.
+# script and port.zig. Each Zig source is compiled to an object under out/obj/<arch>/ first.
 build() {
     arch=$1; name=$2; shift 2
     case $arch in
-        arm)    flags="$arm_flags";    port=port/arm;   out_arch=arm ;;
-        riscv)  flags="$riscv_flags";  port=port/riscv; out_arch=riscv ;;
-        riscvf) flags="$riscv_f_flags"; port=port/riscv; out_arch=riscv ;;
+        arm)    flags="$arm_flags";    target="-target thumb-freestanding-eabi -mcpu cortex_m3";            port=port/arm;   out_arch=arm ;;
+        riscv)  flags="$riscv_flags";  target="-target riscv32-freestanding-none -mcpu generic_rv32+m+c";   port=port/riscv; out_arch=riscv ;;
+        riscvf) flags="$riscv_f_flags"; target="-target riscv32-freestanding-none -mcpu generic_rv32+m+c+f"; port=port/riscv; out_arch=riscv ;;
     esac
-    $zig cc $flags $common -T "$port/link.ld" -o "$out/$out_arch/$name.elf" \
-        "$port/start.S" port/port.c "$@"
+    mkdir -p "$out/obj/$arch"
+    set -- port/port.zig "$@"
+    for source; do
+        shift
+        case $source in
+            *.zig)
+                object="$out/obj/$arch/$(basename "$source" .zig).o"
+                $zig build-obj $target $zig_common -femit-bin="$object" "$source"
+                set -- "$@" "$object" ;;
+            *) set -- "$@" "$source" ;;
+        esac
+    done
+    $zig cc $flags $common -T "$port/link.ld" -o "$out/$out_arch/$name.elf" "$port/start.S" "$@"
 }
 
 for arch in arm riscv; do
-    build "$arch" crc32   -DROUNDS=3000  src/crc32.c
-    build "$arch" sort    -DROUNDS=1300  src/sort.c
-    build "$arch" memops  -DROUNDS=43000 src/memops.c
-    build "$arch" branchy -DROUNDS=44000 src/branchy.c
+    build "$arch" crc32   src/crc32.zig
+    build "$arch" sort    src/sort.zig
+    build "$arch" memops  src/memops.zig
+    build "$arch" branchy src/branchy.zig
 done
-build arm   smc -DROUNDS=15000000 src/smc_arm.c
-build riscv smc -DROUNDS=15000000 src/smc_riscv.c
-build riscvf floats -DROUNDS=510000 src/floats.c
+build arm   smc src/smc_arm.zig
+build riscv smc src/smc_riscv.zig
+build riscvf floats src/floats.zig
 
 cm="-I$coremark -I$coremark/barebones -Iport -DITERATIONS=570 -DMAIN_HAS_NOARGC=1 \
     -DCLOCKS_PER_SEC=1000 -DHAS_FLOAT=0 -DHAS_PRINTF=0 -DFLAGS_STR=\"-Os\" -DMEM_LOCATION=\"STACK\" -DPERFORMANCE_RUN=1"
@@ -80,7 +92,7 @@ for d in "$embench"/src/*/; do
         *)           gsf=1 ;;
     esac
     for arch in arm riscv; do
-        build "$arch" "eb_$bench" $eb -DGLOBAL_SCALE_FACTOR=$gsf -I"$d" port/embench.c port/libc.c \
+        build "$arch" "eb_$bench" $eb -DGLOBAL_SCALE_FACTOR=$gsf -I"$d" port/embench.zig port/libc.zig \
             "$embench/support/beebsc.c" "$d"*.c
     done
 done

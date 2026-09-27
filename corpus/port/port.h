@@ -1,5 +1,5 @@
 /* The runtime every corpus image is linked against: a console buffer, a deterministic clock, the
-   CRC the run ends with, and the exit the start code jumps to. Declared here, defined in port.c
+   CRC the run ends with, and the exit the start code jumps to. Declared here, defined in port.zig
    and start.S. */
 #ifndef CORPUS_PORT_H
 #define CORPUS_PORT_H
