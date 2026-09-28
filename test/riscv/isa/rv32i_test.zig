@@ -1,7 +1,7 @@
 //! Tests of the RV32I rows over a stub memory: immediate and register arithmetic, shifts, LUI and
 //! AUIPC, jumps and branches, loads and stores with sign extension, a misaligned access under a
 //! model that answers one and under a model that refuses it, unanswered accesses, FENCE, ECALL and
-//! EBREAK. Registered in `src/tests.zig`.
+//! EBREAK. Registered in `tests.zig`.
 const std = @import("std");
 const State = @import("../../../src/riscv/isa/state.zig").State;
 const instruction = @import("../../../src/riscv/isa/instruction.zig");

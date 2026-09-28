@@ -1,6 +1,6 @@
 //! System-instruction semantics for the T32 rows: SVC, the WFE, WFI and SEV sleep hints and the
 //! wide hint space including PACBTI, CPS, MSR and MRS over the special registers and the Security
-//! Extension's banked copies, SG, TT and its variants, and CLRM. Rows take the machine state, host
+//! Extension's banked copies, SG, TT and its variants, and CLRM. Rows take the machine state, the
 //! host and decoded fields and return an `Outcome`; anything that changes which exceptions the core
 //! may take is signalled to the host. root.zig binds each row to its name for the generated
 //! decoder.
