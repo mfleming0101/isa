@@ -124,11 +124,11 @@ See also: [Oracle](#oracle), [Lockstep](#lockstep), [Metrics](#metrics).
 
 ## Cost
 
-What one [class](#class) costs a particular core: `cycles` charged always and `taken` added when a
-branch is taken. The library has no opinion about the numbers; the table belongs to the host and
-lives in the core [model](#model).
+What one [class](#class) costs a particular core: `cycles` charged always, `taken` added when a
+branch is taken and, on Arm, `per_register` added for each register of a list. The library has no
+opinion about the numbers; the table belongs to the host and lives in the core [model](#model).
 
-`Cost`, [src/arm/isa/instruction.zig#L10](src/arm/isa/instruction.zig#L10) and
+`Cost`, [src/arm/isa/instruction.zig#L27](src/arm/isa/instruction.zig#L27) and
 [src/riscv/isa/instruction.zig#L12](src/riscv/isa/instruction.zig#L12); the table is
 `Model.Costs`.
 
@@ -136,11 +136,11 @@ See also: [Class](#class), [Charge](#charge), [Model](#model).
 
 ## Done
 
-What one leaf of the generated [tree](#tree) answers with: the [outcome](#outcome) the row's
-handler reported and the row's [class](#class), and on Arm the row's meta entry. Sixteen bits on RISC-V
-and 32 on Arm, returned by value. Its default is
-the answer to a code no [row](#row) of the [group set](#group-set) matches: `undefined` on Arm and
-`illegal` on RISC-V, which is why such a code is never silently executed.
+What one leaf of the generated [tree](#tree) answers with: the [outcome](#outcome) the row's handler
+reported and the row's [class](#class), and on Arm the row's [meta entry](#meta-entry). Sixteen bits
+on RISC-V and 32 on Arm, returned by value. Its default is the answer to a code no [row](#row) of
+the [group set](#group-set) matches: `undefined` on Arm and `illegal` on RISC-V, which is why such a
+code is never silently executed.
 
 `Done`, [src/sem/arm/root.zig#L31](src/sem/arm/root.zig#L31) and
 [src/sem/riscv/root.zig#L24](src/sem/riscv/root.zig#L24).
@@ -253,7 +253,8 @@ See also: [Guard](#guard), [Group set](#group-set), [Leaf](#leaf).
 
 Emitted by `src/gen` into the build cache on every build and reached only as a module, never from
 the source tree. Three files per architecture: `*_decode.zig` (the [tree](#tree)),
-`*_disasm.zig` (the disassembler) and `*_meta.zig` (row counts and the name table).
+`*_disasm.zig` (the disassembler) and `*_meta.zig` (row counts, the name table and, on Arm, the
+[meta entries](#meta-entry)).
 
 `isa.generated`, [src/root.zig#L31](src/root.zig#L31).
 
@@ -421,6 +422,16 @@ several behaviours (unaligned single access, the reach of an APSR write) turn on
 
 See also: [Architecture](#architecture), [Group](#group), [Extension](#extension).
 
+## Meta entry
+
+What the generated Arm meta file holds for each [row](#row) and then each alias: its
+[class](#class) and where its registers sit in a [code](#code). `entryOf` picks a code's entry,
+`Done` and `Result` carry it, and `masks.of` reads the registers written, read and addressed.
+
+`Entry`, [src/arm/isa/masks.zig#L14](src/arm/isa/masks.zig#L14).
+
+See also: [Done](#done), [Result](#result), [Generated](#generated).
+
 ## Metrics
 
 One row of `bench/summary.tsv`: provenance, every correctness gate, nanoseconds per instruction
@@ -452,7 +463,8 @@ Two distinct records, both currently called `Model`.
 
 The core model is what a core hands the [step loop](#step-loop): its decoding choice --- a
 [selection](#selection) on Arm, a [group set](#group-set) on RISC-V --- and one [cost](#cost) per
-[class](#class). `step.Model`, [src/arm/isa/step.zig#L70](src/arm/isa/step.zig#L70) and
+[class](#class), and on Arm the `Rules` of a measured divider and straddled branch targets.
+`step.Model`, [src/arm/isa/step.zig#L73](src/arm/isa/step.zig#L73) and
 [src/riscv/isa/step.zig#L74](src/riscv/isa/step.zig#L74).
 
 The CSR model is the set of choices the RISC-V Privileged spec leaves to an implementation:
@@ -626,10 +638,11 @@ See also: [Host](#host), [Model](#model), [Oracle](#oracle).
 ## Result
 
 What one turn of the [step loop](#step-loop) produced, packed into 64 bits: the [code](#code), its
-[class](#class), the cycles charged, whether it branched, and `halt()`, which is null when the
-instruction retired and otherwise a [Stop](#stop). The RISC-V one also carries a [Trap](#trap).
+[class](#class) (on Arm its [meta entry](#meta-entry), whose class `class()` reads), the cycles
+charged, whether it branched, and `halt()`, which is null when the instruction retired and otherwise
+a [Stop](#stop). The RISC-V one also carries a [Trap](#trap).
 
-`Result`, [src/arm/isa/step.zig#L34](src/arm/isa/step.zig#L34) and
+`Result`, [src/arm/isa/step.zig#L32](src/arm/isa/step.zig#L32) and
 [src/riscv/isa/step.zig#L35](src/riscv/isa/step.zig#L35).
 
 See also: [Step loop](#step-loop), [Stop](#stop), [Trap](#trap), [Done](#done).
@@ -653,7 +666,7 @@ A row's identifier, which is also the name of its [semantic handler](#semantic-h
 string `meta.names[i]` returns. Arm rows use the manual's encoding label, `MNEMONIC[_form]_Tn`
 with a lower-case tag where one encoding is split; RISC-V rows use `MNEMONIC_<number>`.
 
-Emitted by [src/gen/emit_meta.zig#L8](src/gen/emit_meta.zig#L8); the handler tables are
+Emitted by [src/gen/emit_meta.zig#L13](src/gen/emit_meta.zig#L13); the handler tables are
 [src/sem/arm/root.zig](src/sem/arm/root.zig) and [src/sem/riscv/root.zig](src/sem/riscv/root.zig).
 
 See also: [Row](#row), [Semantic handler](#semantic-handler), [Index](#index).

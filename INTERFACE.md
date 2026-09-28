@@ -12,10 +12,10 @@ const isa = @import("isa");
 
 | Export | What |
 |---|---|
-| `isa.arm`, `isa.riscv` | `State`, `Stop`, the `decode` groups and the `step` loop of each architecture; `Architecture` for Arm, `csr` for RISC-V |
+| `isa.arm`, `isa.riscv` | `State`, `Stop`, the `decode` groups and the `step` loop of each architecture; `Architecture` and `masks` for Arm, `csr` for RISC-V |
 | `isa.generated.arm_decode`, `riscv_decode` | The generated decode tree: `indexNarrow`, `indexWide`, `executeNarrow`, `executeWide` |
 | `isa.generated.arm_disasm`, `riscv_disasm` | The generated disassembler: `write(w, code, pc, groups)` |
-| `isa.generated.arm_meta`, `riscv_meta` | Row counts and the row name table, indexed like the decoder |
+| `isa.generated.arm_meta`, `riscv_meta` | Row counts and the row name table, indexed like the decoder; on Arm also `entries`, each row's and alias's class and register places, and `entryOf` |
 | `isa.contract` | The host requirement lists and `assertHost` |
 | `isa.sem.arm`, `isa.sem.riscv` | The handlers the tree dispatches to, and the `Done` type they return |
 
@@ -183,15 +183,18 @@ class. See [`step_loop.zig`](examples/step_loop.zig).
 - The loop takes a `step.Model`: the decoding choice and a cost table with one `Cost` per
   class. On Arm the decoding choice is a `Selection` from `decode.selectionOf(architecture)`,
   carrying the group set and the xPSR bits the loop tests; on RISC-V it is the group set
-  itself.
+  itself. On Arm the Model also carries `Rules`: a measured divider, `instruction.Divide`,
+  priced by `instruction.divideCycles`, and the extra cycle of a straddled branch target.
 - The second parameter is a comptime group set or `null`. A set given there replaces the
   Model's for decoding and lets the compiler drop every row outside it, which is what a
   build for one fixed core wants; `null` decodes with the Model's set at run time.
-- It returns a 64-bit `Result`: the code, its class (on Arm `class()`, read from the meta entry it carries), the cycles charged, whether
-  it branched, and `halt()`, which is null when the instruction retired and otherwise a
-  `Stop`. On Arm a fault is a `Stop` such as `data_fault`; on RISC-V it is a `trap` the loop
-  has already taken, and `Stop` is only `breakpoint`, `unimplemented` or
-  `unrecoverable_trap`.
+- It returns a 64-bit `Result`: the code, its class (on Arm `class()`, read from the meta entry
+  it carries), the cycles charged, whether it branched, and `halt()`, which is null when the
+  instruction retired and otherwise a `Stop`. On Arm a fault is a `Stop` such as `data_fault`;
+  on RISC-V it is a `trap` the loop has already taken, and `Stop` is only `breakpoint`,
+  `unimplemented` or `unrecoverable_trap`.
+- On Arm `Result.row` is the meta entry, and `isa.arm.masks.of(&arm_meta.entries[row], code)`
+  gives the registers the instruction writes, reads and forms its address from.
 
 ## Decoding and disassembling without executing
 
@@ -205,8 +208,9 @@ class. See [`step_loop.zig`](examples/step_loop.zig).
 ## Classes and costs
 
 Each row carries one cycle class. A `Cost` is `{cycles, taken}`: the loop charges `cycles` and
-adds `taken` to a taken branch, saturating at 255. The library has no opinion about what a
-class costs on your core; the table is yours.
+adds `taken` to a taken branch, saturating at 255. An Arm `Cost` also has `per_register`,
+charged for each register of a list. The library has no opinion about what a class costs on
+your core; the table is yours.
 
 | Architecture | Classes |
 |---|---|
