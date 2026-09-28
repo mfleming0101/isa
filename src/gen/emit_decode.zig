@@ -55,17 +55,17 @@ pub fn indexTree(w: *std.Io.Writer, node: tree.Node, rows: []const spec.Row, gat
     }
 }
 
-/// Emits the tree as switches whose leaves call the row's handler and return its Done.
-pub fn executeTree(w: *std.Io.Writer, node: tree.Node, rows: []const spec.Row, gates: []const u32, depth: usize) !void {
+/// Emits the tree as switches whose leaves call the handler and return a Done, by meta entry given alias entries.
+pub fn executeTree(w: *std.Io.Writer, node: tree.Node, rows: []const spec.Row, gates: []const u32, depth: usize, aliased: ?[]const u32) !void {
     switch (node) {
         .leaf => |leaf| {
             for (leaf.guards) |g| {
                 try pad(w, depth);
                 try guard(w, g);
-                try execute(w, leaf.fallback, rows, gates);
+                try execute(w, leaf.fallback, rows, gates, aliased);
             }
             try pad(w, depth);
-            try execute(w, leaf.row, rows, gates);
+            try execute(w, leaf.row, rows, gates, aliased);
         },
         .branch => |br| {
             try pad(w, depth);
@@ -73,7 +73,7 @@ pub fn executeTree(w: *std.Io.Writer, node: tree.Node, rows: []const spec.Row, g
             for (br.children, 0..) |child, k| {
                 try pad(w, depth + 1);
                 try w.print("{d} => {{\n", .{k});
-                try executeTree(w, child, rows, gates, depth + 2);
+                try executeTree(w, child, rows, gates, depth + 2, aliased);
                 try pad(w, depth + 1);
                 try w.writeAll("},\n");
             }
@@ -95,11 +95,28 @@ fn index(w: *std.Io.Writer, leaf: u32, gates: []const u32) !void {
     try w.print("return {d};{s}\n", .{ leaf, if (gates[leaf] != 0) " }" else "" });
 }
 
-fn execute(w: *std.Io.Writer, leaf: u32, rows: []const spec.Row, gates: []const u32) !void {
+fn execute(w: *std.Io.Writer, leaf: u32, rows: []const spec.Row, gates: []const u32, aliased: ?[]const u32) !void {
     if (leaf == tree.undefined_index) return w.writeAll("return .{};\n");
     if (gates[leaf] != 0) try w.print("{{ if (allowed & {d} == 0) return .{{}}; ", .{gates[leaf]});
-    try byClass(w, rows[leaf]);
+    if (aliased) |first| try byEntry(w, rows[leaf], leaf, first[leaf]) else try byClass(w, rows[leaf]);
     try w.print("{s}\n", .{if (gates[leaf] != 0) " }" else ""});
+}
+
+fn byEntry(w: *std.Io.Writer, row: spec.Row, leaf: u32, first: u32) !void {
+    if (row.aliases.len == 0) {
+        try w.writeAll("return .by(");
+        try handler(w, row);
+        return w.print(", {d});", .{leaf});
+    }
+    try w.writeAll("{ const outcome = ");
+    try handler(w, row);
+    try w.writeAll("; return ");
+    for (row.aliases, 0..) |a, k| {
+        try w.writeAll("if (");
+        try operand(w, row.field(a.letter).?);
+        try w.print(" == {d}) .by(outcome, {d}) else ", .{ a.value, first + k });
+    }
+    try w.print(".by(outcome, {d}); }}", .{leaf});
 }
 
 fn byClass(w: *std.Io.Writer, row: spec.Row) !void {

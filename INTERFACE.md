@@ -153,9 +153,10 @@ returns a `Done`. See [`execute_arm.zig`](examples/execute_arm.zig) and
 [`execute_riscv.zig`](examples/execute_riscv.zig).
 
 ```zig
-pub const Done = packed struct(u16) {
+pub const Done = packed struct {
     outcome: Outcome,   // what the row reported
     class: Class,       // the cycle class of the row, for costing
+    row: u11,           // Arm only: the row's meta entry, its alias's where the alias field matches
 };
 ```
 
@@ -186,7 +187,7 @@ class. See [`step_loop.zig`](examples/step_loop.zig).
 - The second parameter is a comptime group set or `null`. A set given there replaces the
   Model's for decoding and lets the compiler drop every row outside it, which is what a
   build for one fixed core wants; `null` decodes with the Model's set at run time.
-- It returns a 64-bit `Result`: the code, its class, the cycles charged, whether
+- It returns a 64-bit `Result`: the code, its class (on Arm `class()`, read from the meta entry it carries), the cycles charged, whether
   it branched, and `halt()`, which is null when the instruction retired and otherwise a
   `Stop`. On Arm a fault is a `Stop` such as `data_fault`; on RISC-V it is a `trap` the loop
   has already taken, and `Stop` is only `breakpoint`, `unimplemented` or

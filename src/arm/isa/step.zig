@@ -9,6 +9,7 @@ const decode = @import("decode.zig");
 const access = @import("access.zig");
 const t32_wide = @import("t32_wide.zig");
 const tree = @import("arm_decode");
+const meta = @import("arm_meta");
 const charge = @import("../../cost.zig").charge;
 
 comptime {
@@ -27,21 +28,29 @@ pub const Signal = enum { supervisor_call, exception_return, function_return };
 /// What a halted core waits for: WFE waits for an event, WFI for an interrupt, B1.5.18 and B1.5.19.
 pub const Wait = enum { event, interrupt };
 
-/// What one step produced: the code, class, cycles, branch and any halt.
+/// What one step produced: the code, meta entry, cycles, branch and any halt.
 pub const Result = packed struct(u64) {
     code: u32 = 0,
     fetched: bool = false,
-    class: instruction.Class = .data_processing,
     executed: bool = false,
     cycles: u8 = 0,
     branched: bool = false,
     stop: Stop = .breakpoint,
     halted: bool = false,
-    _: u11 = 0,
+    /// The code's meta entry, an alias's where its field matches; valid where executed.
+    row: u11 = 0,
+    /// Passed over by a failing IT condition, so priced and classed as data processing.
+    skipped: bool = false,
+    _: u3 = 0,
 
-    /// Result of an executed instruction with its class, cycles and branch.
-    pub fn retired(code: u32, class: instruction.Class, cycles: u8, branched: bool) Result {
-        return .{ .code = code, .fetched = true, .class = class, .executed = true, .cycles = cycles, .branched = branched };
+    /// Result of an executed instruction with its meta entry, cycles and branch.
+    pub fn retired(code: u32, row: u11, cycles: u8, branched: bool) Result {
+        return .{ .code = code, .fetched = true, .executed = true, .cycles = cycles, .branched = branched, .row = row };
+    }
+
+    /// The class of an executed instruction.
+    pub fn class(self: Result) instruction.Class {
+        return if (self.skipped) .data_processing else meta.entries[self.row].class;
     }
 
     /// Result of a halt, with the fetched code if any.
@@ -122,17 +131,17 @@ fn body(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     var held: access.Span(Host) = &.{};
     const hw1 = access.fetch(Host, host, address, &held) catch |err| return Result.stopped(null, refused(err));
     if (escapes(hw1)) return @call(.always_inline, wide, .{ Host, groups, s, host, model, address, hw1, &held, in_it });
-    if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 2, hw1);
+    if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 2, hw1, meta.entryOf(tree.indexNarrow(hw1, groups orelse model.decoding.groups), hw1));
     const done = @call(.always_inline, tree.executeNarrow, .{ Host, s, host, hw1, groups orelse model.decoding.groups });
     switch (done.class) {
-        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.outcome, model.rules.straddle }),
+        inline else => |c| return @call(.always_inline, retire, .{ Host, s, host, model.costOf(c), address, 2, hw1, c, done.row, done.outcome, model.rules.straddle }),
     }
 }
 
 fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *Host, model: Model, address: u32, hw1: u16, held: *access.Span(Host), in_it: bool) Result {
     const hw2 = access.halfword(Host, host, held, address +% 2) catch |err| return Result.stopped(null, refused(err));
     const code = @as(u32, hw1) << 16 | hw2;
-    if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
+    if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code, meta.entryOf(tree.indexWide(code, groups orelse model.decoding.groups), code));
     const dividing = model.rules.divide != null and hw1 & 0xffd0 == 0xfb90;
     const dividend = if (dividing) s.get(@truncate(hw1)) else 0;
     const divisor = if (dividing) s.get(@truncate(hw2)) else 0;
@@ -144,15 +153,15 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     switch (done.class) {
         inline else => |c| {
             const cost = if (c == .divide and dividing) instruction.Cost{ .cycles = instruction.divideCycles(dividend, divisor, hw1 & 0x20 == 0, model.rules.divide.?), .taken = 0, .per_register = 0 } else model.costOf(c);
-            return @call(.always_inline, retire, .{ Host, s, host, cost, address, 4, code, c, done.outcome, model.rules.straddle });
+            return @call(.always_inline, retire, .{ Host, s, host, cost, address, 4, code, c, done.row, done.outcome, model.rules.straddle });
         },
     }
 }
 
-fn skip(cost: instruction.Cost, s: *State, address: u32, length: u32, code: u32) Result {
+fn skip(cost: instruction.Cost, s: *State, address: u32, length: u32, code: u32, row: u11) Result {
     if (length == 2 and code & 0xff00 == 0xbe00) return Result.stopped(code, .breakpoint);
     s.pc = address +% length;
-    return Result.retired(code, .data_processing, cost.cycles, false);
+    return .{ .code = code, .fetched = true, .executed = true, .cycles = cost.cycles, .row = row, .skipped = true };
 }
 
 /// Executes one instruction from a code in hand under a group set; a code above 0xffff is a 32-bit
@@ -181,26 +190,26 @@ fn direct(code: u32) bool {
     return code >> 12 == 0xd or code >> 11 == 0x1c;
 }
 
-fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, address: u32, length: u32, code: u32, class: instruction.Class, outcome: instruction.Outcome, straddle: bool) Result {
+fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, address: u32, length: u32, code: u32, class: instruction.Class, row: u11, outcome: instruction.Outcome, straddle: bool) Result {
     const cycles = charge(cost.cycles, instruction.words(class, code) *| cost.per_register);
     switch (outcome) {
         .next => {
             s.pc = address +% length;
-            return Result.retired(code, class, cycles, false);
+            return Result.retired(code, row, cycles, false);
         },
-        .branched => return Result.retired(code, class, charge(charge(cycles, cost.taken), @intFromBool(straddle and straddles(Host, host, code, s.pc))), true),
+        .branched => return Result.retired(code, row, charge(charge(cycles, cost.taken), @intFromBool(straddle and straddles(Host, host, code, s.pc))), true),
         .supervisor_call => {
             s.pc = address +% length;
             host.signal(.supervisor_call);
-            return Result.retired(code, class, cycles, false);
+            return Result.retired(code, row, cycles, false);
         },
         .exception_return => {
             host.signal(.exception_return);
-            return Result.retired(code, class, charge(cycles, cost.taken), true);
+            return Result.retired(code, row, charge(cycles, cost.taken), true);
         },
         .function_return => {
             host.signal(.function_return);
-            return Result.retired(code, class, charge(cycles, cost.taken), true);
+            return Result.retired(code, row, charge(cycles, cost.taken), true);
         },
         .breakpoint, .unimplemented, .data_fault, .unaligned, .violation, .secure, .divide_by_zero, .no_coprocessor, .authentication_failure, .undefined => {
             @branchHint(.cold);

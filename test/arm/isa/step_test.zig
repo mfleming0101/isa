@@ -12,6 +12,8 @@ const Architecture = @import("../../../src/arm/isa/architecture.zig").Architectu
 const instruction = @import("../../../src/arm/isa/instruction.zig");
 const Class = instruction.Class;
 const decode = @import("../../../src/arm/isa/decode.zig");
+const tree = @import("arm_decode");
+const meta = @import("arm_meta");
 
 const Mem = struct {
     const Self = @This();
@@ -165,6 +167,20 @@ fn memory7(codes: []const u16) Mem {
     return m;
 }
 
+fn retired(m: anytype, code: u32, class: Class, cycles: u8, branched: bool) !step.Result {
+    const groups = m.model.decoding.groups;
+    const row = if (code > 0xffff) tree.indexWide(code, groups) else tree.indexNarrow(code, groups);
+    const r = step.Result.retired(code, meta.entryOf(row, code), cycles, branched);
+    try std.testing.expectEqual(class, r.class());
+    return r;
+}
+
+fn skipped(m: anytype, code: u32) !step.Result {
+    var r = try retired(m, code, .data_processing, 0, false);
+    r.skipped = true;
+    return r;
+}
+
 fn run(s: *State, m: anytype) step.Result {
     const Host = @TypeOf(m.*);
     return step.step(Host, null, s, m, m.model);
@@ -174,7 +190,7 @@ test "a 16-bit instruction advances the program counter by two and reports its c
     var m = memory(&.{0x2001});
     var s: State = .{ .xpsr = State.flag_t };
     const r = run(&s, &m);
-    try std.testing.expectEqual(step.Result.retired(0x2001, .data_processing, 0, false), r);
+    try std.testing.expectEqual(try retired(&m, 0x2001, .data_processing, 0, false), r);
     try std.testing.expectEqual(@as(u32, 2), s.pc);
     try std.testing.expectEqual(@as(u32, 1), s.r[0]);
 }
@@ -183,7 +199,7 @@ test "a taken branch leaves the program counter at the target and says so" {
     var m = memory(&.{0xe001});
     var s: State = .{ .xpsr = State.flag_t };
     const r = run(&s, &m);
-    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), r);
+    try std.testing.expectEqual(try retired(&m, 0xe001, .branch, 0, true), r);
     try std.testing.expectEqual(@as(u32, 6), s.pc);
 }
 
@@ -241,7 +257,7 @@ test "a load multiple reports the number of registers in its list" {
     var s: State = .{ .xpsr = State.flag_t };
     s.r[1] = 4;
     const r = run(&s, &m);
-    try std.testing.expectEqual(step.Result.retired(0xc90c, .load_multiple, 2, false), r);
+    try std.testing.expectEqual(try retired(&m, 0xc90c, .load_multiple, 2, false), r);
     try std.testing.expectEqual(@as(u32, 12), s.r[1]);
 }
 
@@ -249,7 +265,7 @@ test "a 32-bit instruction fetches its second halfword, advances the program cou
     var m = memory(&.{ 0xf000, 0xf802 });
     var s: State = .{ .xpsr = State.flag_t };
     const r = run(&s, &m);
-    try std.testing.expectEqual(step.Result.retired(0xf000_f802, .branch_link, 0, true), r);
+    try std.testing.expectEqual(try retired(&m, 0xf000_f802, .branch_link, 0, true), r);
     try std.testing.expectEqual(@as(u32, 8), s.pc);
     try std.testing.expectEqual(@as(u32, 5), s.lr);
 }
@@ -295,7 +311,7 @@ test "IT conditions the instructions that follow it, and ITSTATE advances past e
     _ = run(&s, &m);
     try std.testing.expectEqual(@as(u8, 0x14), s.itState());
     try std.testing.expectEqual(@as(u32, 2), s.pc);
-    try std.testing.expectEqual(step.Result.retired(0x2001, .data_processing, 0, false), run(&s, &m));
+    try std.testing.expectEqual(try skipped(&m, 0x2001), run(&s, &m));
     try std.testing.expectEqual(@as(u32, 4), s.pc);
     try std.testing.expectEqual(@as(u32, 0), s.r[0]);
     try std.testing.expectEqual(@as(u8, 0x08), s.itState());
@@ -320,7 +336,7 @@ test "a 32-bit instruction whose IT condition fails is skipped whole, leaving th
     var m = memory7(&.{ 0xbf08, 0xf240, 0x0134, 0x2205 });
     var s: State = .{ .xpsr = State.flag_t };
     _ = run(&s, &m);
-    try std.testing.expectEqual(step.Result.retired(0xf240_0134, .data_processing, 0, false), run(&s, &m));
+    try std.testing.expectEqual(try skipped(&m, 0xf240_0134), run(&s, &m));
     try std.testing.expectEqual(@as(u32, 6), s.pc);
     try std.testing.expectEqual(@as(u32, 0), s.r[1]);
     try std.testing.expectEqual(@as(u8, 0), s.itState());
@@ -445,7 +461,7 @@ test "with the divide rule a UDIV is charged by the operands it read, even when 
     var s: State = .{ .xpsr = State.flag_t };
     s.r[1] = 0xffff;
     s.r[2] = 1;
-    try std.testing.expectEqual(step.Result.retired(0xfbb1_f1f2, .divide, 8, false), run(&s, &m));
+    try std.testing.expectEqual(try retired(&m, 0xfbb1_f1f2, .divide, 8, false), run(&s, &m));
     try std.testing.expectEqual(@as(u32, 0xffff), s.r[1]);
 }
 
@@ -454,38 +470,38 @@ test "without the divide rule a UDIV costs its class" {
     var s: State = .{ .xpsr = State.flag_t };
     s.r[1] = 0xffff;
     s.r[2] = 1;
-    try std.testing.expectEqual(step.Result.retired(0xfbb1_f0f2, .divide, 0, false), run(&s, &m));
+    try std.testing.expectEqual(try retired(&m, 0xfbb1_f0f2, .divide, 0, false), run(&s, &m));
 }
 
 test "with the straddle rule a taken branch to a 32-bit instruction at a halfword costs a cycle more, and to a 16-bit one nothing" {
     var wide = memory7(&.{ 0xe001, 0, 0, 0xf000 });
     wide.model.rules.straddle = true;
     var s: State = .{ .xpsr = State.flag_t };
-    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 1, true), run(&s, &wide));
+    try std.testing.expectEqual(try retired(&wide, 0xe001, .branch, 1, true), run(&s, &wide));
     var narrow = memory7(&.{ 0xe001, 0, 0, 0x2001 });
     narrow.model.rules.straddle = true;
     s = .{ .xpsr = State.flag_t };
-    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), run(&s, &narrow));
+    try std.testing.expectEqual(try retired(&narrow, 0xe001, .branch, 0, true), run(&s, &narrow));
     var off = memory7(&.{ 0xe001, 0, 0, 0xf000 });
     s = .{ .xpsr = State.flag_t };
-    try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), run(&s, &off));
+    try std.testing.expectEqual(try retired(&off, 0xe001, .branch, 0, true), run(&s, &off));
 }
 
 test "the straddle rule charges a taken B<c> and B.W, but not a BX, to a 32-bit instruction at a halfword" {
     var beq = memory7(&.{ 0xd001, 0, 0, 0xf000 });
     beq.model.rules.straddle = true;
     var s: State = .{ .xpsr = State.flag_t | State.flag_z };
-    try std.testing.expectEqual(step.Result.retired(0xd001, .branch, 1, true), run(&s, &beq));
+    try std.testing.expectEqual(try retired(&beq, 0xd001, .branch, 1, true), run(&s, &beq));
     var b_w = memory7(&.{ 0xf000, 0xb801, 0, 0xf000 });
     b_w.model.rules.straddle = true;
     s = .{ .xpsr = State.flag_t };
-    try std.testing.expectEqual(step.Result.retired(0xf000_b801, .branch, 1, true), run(&s, &b_w));
+    try std.testing.expectEqual(try retired(&b_w, 0xf000_b801, .branch, 1, true), run(&s, &b_w));
     try std.testing.expectEqual(@as(u32, 6), s.pc);
     var bx = memory7(&.{ 0x4700, 0, 0, 0xf000 });
     bx.model.rules.straddle = true;
     s = .{ .xpsr = State.flag_t };
     s.r[0] = 7;
-    try std.testing.expectEqual(step.Result.retired(0x4700, .branch, 0, true), run(&s, &bx));
+    try std.testing.expectEqual(try retired(&bx, 0x4700, .branch, 0, true), run(&s, &bx));
     try std.testing.expectEqual(@as(u32, 6), s.pc);
 }
 
@@ -494,5 +510,5 @@ test "a load multiple charges each register only as much as its class's per-regi
     m.model.costs[@intFromEnum(Class.load_multiple)] = .{ .cycles = 1, .taken = 0, .per_register = 0 };
     var s: State = .{ .xpsr = State.flag_t };
     s.r[1] = 4;
-    try std.testing.expectEqual(step.Result.retired(0xc90c, .load_multiple, 1, false), run(&s, &m));
+    try std.testing.expectEqual(try retired(&m, 0xc90c, .load_multiple, 1, false), run(&s, &m));
 }

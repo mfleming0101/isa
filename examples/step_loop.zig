@@ -11,7 +11,7 @@ test "the Arm step loop fetches, decodes, executes and charges one instruction" 
 
     const first = step.step(@TypeOf(host), null, &s, &host, model);
     try std.testing.expectEqual(null, first.halt());
-    try std.testing.expectEqual(.data_processing, first.class);
+    try std.testing.expectEqual(.data_processing, first.class());
     try std.testing.expectEqual(1, first.cycles);
     try std.testing.expectEqual(2, s.pc);
     try std.testing.expectEqual(1, s.r[0]);

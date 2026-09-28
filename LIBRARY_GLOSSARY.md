@@ -137,7 +137,8 @@ See also: [Class](#class), [Charge](#charge), [Model](#model).
 ## Done
 
 What one leaf of the generated [tree](#tree) answers with: the [outcome](#outcome) the row's
-handler reported and the row's [class](#class). Sixteen bits, returned by value. Its default is
+handler reported and the row's [class](#class), and on Arm the row's meta entry. Sixteen bits on RISC-V
+and 32 on Arm, returned by value. Its default is
 the answer to a code no [row](#row) of the [group set](#group-set) matches: `undefined` on Arm and
 `illegal` on RISC-V, which is why such a code is never silently executed.
 

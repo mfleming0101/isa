@@ -21,23 +21,26 @@ pub const State = state.State;
 pub const Groups = @import("../../arm/isa/decode.zig").Groups;
 /// What a handler answers with: next, branched, a fault, or something the host finishes.
 pub const Outcome = instruction.Outcome;
-/// Cost class of a row, which the generated tree prices each leaf by.
+/// Cost class of a row, which the step prices each instruction by.
 pub const Class = instruction.Class;
 /// Errors a memory access can raise: DataFault, Unaligned, Violation, Secure.
 pub const Failure = instruction.Failure;
 
-/// A tree leaf's answer: outcome and cost class. Defaults to UNDEFINED, the answer when no row
-/// matches, A5.3.
-pub const Done = packed struct(u16) {
-    outcome: Outcome = .undefined,
+/// A tree leaf's answer: meta entry, its class and outcome. Defaults to UNDEFINED, the answer when
+/// no row matches, A5.3.
+pub const Done = packed struct(u32) {
+    row: u11 = 0,
     class: Class = .data_processing,
-    _: u4 = 0,
+    outcome: Outcome = .undefined,
+    _: u9 = 0,
 
-    /// Builds a Done from a handler's outcome and the row's comptime class.
-    pub fn by(outcome: Outcome, comptime class: Class) Done {
-        return .{ .outcome = outcome, .class = class };
+    /// Builds a Done from a handler's outcome and the comptime meta entry, whose class it carries.
+    pub fn by(outcome: Outcome, comptime row: u11) Done {
+        return .{ .row = row, .class = comptime entries[row].class, .outcome = outcome };
     }
 };
+
+const entries = @import("arm_meta").entries;
 
 /// Integer data-processing row handlers: arithmetic, logic, shifts, extends, multiplies, bitfields.
 pub const alu = @import("alu.zig");

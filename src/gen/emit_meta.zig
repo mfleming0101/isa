@@ -19,6 +19,17 @@ pub fn write(w: *std.Io.Writer, rows: []const spec.Row, total: usize, arm: bool)
     if (arm) try entries(w, rows);
 }
 
+/// The meta entry of each row's first alias; aliases follow the rows, in row order.
+pub fn firstAliases(gpa: std.mem.Allocator, rows: []const spec.Row) ![]u32 {
+    const out = try gpa.alloc(u32, rows.len);
+    var next: u32 = @intCast(rows.len);
+    for (rows, out) |r, *first| {
+        first.* = next;
+        next += @intCast(r.aliases.len);
+    }
+    return out;
+}
+
 fn entries(w: *std.Io.Writer, rows: []const spec.Row) !void {
     try w.writeAll("\nconst Entry = @import(\"isa\").arm.masks.Entry;\n\n");
     try w.writeAll("/// The class and register places of each row, then of each alias, then of a code no row claims.\n");

@@ -148,7 +148,7 @@ fn maskOf(groups: []const []const u8, wanted: []const []const u8) u32 {
     return out;
 }
 
-const Emit = enum { index, execute };
+const Emit = union(enum) { index, execute: ?[]const u32 };
 
 fn quota(w: *std.Io.Writer, rows: []const spec.Row) !void {
     try w.print("    @setEvalBranchQuota({d});\n", .{rows.len * 100});
@@ -187,7 +187,7 @@ fn family(
 fn body(w: *std.Io.Writer, emit: Emit, node: tree.Node, rows: []const spec.Row, gates: []const u32) !void {
     return switch (emit) {
         .index => emit_decode.indexTree(w, node, rows, gates, 1),
-        .execute => emit_decode.executeTree(w, node, rows, gates, 1),
+        .execute => |aliased| emit_decode.executeTree(w, node, rows, gates, 1, aliased),
     };
 }
 
@@ -217,14 +217,15 @@ fn writeFile(
             "(comptime Host: type, s: *State, host: *Host, code: u32, allowed: Groups) sem.Done"
         else
             "(comptime Host: type, s: *State, host: *Host, code: u32, _: Groups) sem.Done";
+        const executing: Emit = .{ .execute = if (a.arch == .arm) try emit_meta.firstAliases(gpa, rows) else null };
         const lookup = if (word) "(code: u32, allowed: Groups) u32" else "(code: u32, _: Groups) u32";
         try family(w, "indexNarrow", "Row index of a 16-bit code under a group set, or undefined_index.", lookup, "(code, allowed)", "undefined_index", .index, narrow, rows, gates, masks);
         try w.writeAll("\n");
         try family(w, "indexWide", "Row index of a 32-bit code under a group set, or undefined_index.", lookup, "(code, allowed)", "undefined_index", .index, wide, rows, gates, masks);
         try w.writeAll("\n");
-        try family(w, "executeNarrow", "Executes a 16-bit code against the state and host; unclaimed when no allowed row matches.", execute, "(Host, s, host, code, allowed)", ".{}", .execute, narrow, rows, gates, masks);
+        try family(w, "executeNarrow", "Executes a 16-bit code against the state and host; unclaimed when no allowed row matches.", execute, "(Host, s, host, code, allowed)", ".{}", executing, narrow, rows, gates, masks);
         try w.writeAll("\n");
-        try family(w, "executeWide", "Executes a 32-bit code against the state and host; unclaimed when no allowed row matches.", execute, "(Host, s, host, code, allowed)", ".{}", .execute, wide, rows, gates, masks);
+        try family(w, "executeWide", "Executes a 32-bit code against the state and host; unclaimed when no allowed row matches.", execute, "(Host, s, host, code, allowed)", ".{}", executing, wide, rows, gates, masks);
     } else if (std.mem.eql(u8, file, "disasm")) {
         try w.writeAll("//! The disassembler: renders a code at a program counter as its row's template text, aliases first.\n\n");
         try w.print("const std = @import(\"std\");\nconst sem = @import(\"isa\").sem.{s};\n", .{a.sem});
