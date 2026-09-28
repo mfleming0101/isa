@@ -173,6 +173,7 @@ fn attachGenerated(
         }
         made[0].addImport("isa", lib);
         made[1].addImport("isa", lib);
+        made[2].addImport("isa", lib);
         made[1].addImport(b.fmt("{s}_decode", .{arch}), made[0]);
     }
 }

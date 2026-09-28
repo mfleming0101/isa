@@ -250,7 +250,7 @@ fn writeFile(
         try w.writeAll(") decode.indexWide(code, groups) else decode.indexNarrow(code, groups);\n}\n");
     } else {
         try w.writeAll("//! Row counts and names, indexed like the decoder's leaves.\n\n");
-        try emit_meta.write(w, rows, a.rows.len);
+        try emit_meta.write(w, rows, a.rows.len, a.arch == .arm);
     }
 
     const path = try std.fmt.allocPrint(gpa, "{s}/{s}_{s}.zig", .{ dir, name, file });
