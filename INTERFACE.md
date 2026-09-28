@@ -209,5 +209,5 @@ class costs on your core; the table is yours.
 
 | Architecture | Classes |
 |---|---|
-| Arm | `data_processing`, `load`, `store`, `load_multiple`, `store_multiple`, `push`, `pop`, `pop_pc`, `branch`, `branch_link`, `system`, `sleep`, `special_register`, `barrier`, `divide` |
+| Arm | `data_processing`, `load`, `store`, `load_multiple`, `store_multiple`, `push`, `pop`, `pop_pc`, `branch`, `branch_link`, `system`, `sleep`, `special_register`, `barrier`, `divide`, `multiply` |
 | RISC-V | `data_processing`, `load`, `store`, `branch`, `jump`, `system`, `multiply`, `divide`, `atomic`, `load_reserved` |

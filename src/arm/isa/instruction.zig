@@ -4,7 +4,7 @@
 //! moves.
 
 /// Kind of instruction a row is, used to price it and count its words.
-pub const Class = enum(u4) { data_processing, load, store, load_multiple, store_multiple, push, pop, pop_pc, branch, branch_link, system, sleep, special_register, barrier, divide };
+pub const Class = enum(u4) { data_processing, load, store, load_multiple, store_multiple, push, pop, pop_pc, branch, branch_link, system, sleep, special_register, barrier, divide, multiply };
 
 /// A measured divider's cycles: zero divisor, zero dividend, narrower dividend, else base plus one
 /// per `bits` bits; SDIV adds `signed`.

@@ -64,7 +64,7 @@
     .{ .name = "LSR_reg_T1", .group = "v6m", .class = "data_processing", .bits = "0100000011mmmddd", .text = "lsrs r{d}, r{m}" },
     .{ .name = "MOV_imm_T1", .group = "v6m", .class = "data_processing", .bits = "00100dddiiiiiiii", .text = "movs r{d}, #{i}" },
     .{ .name = "MOV_reg_T1", .group = "v6m", .class = "data_processing", .bits = "01000110dmmmmddd", .text = "mov r{d}, r{m}" },
-    .{ .name = "MUL_T1", .group = "v6m", .class = "data_processing", .bits = "0100001101nnnddd", .text = "muls r{d}, r{n}, r{d}" },
+    .{ .name = "MUL_T1", .group = "v6m", .class = "multiply", .bits = "0100001101nnnddd", .text = "muls r{d}, r{n}, r{d}" },
     .{ .name = "MVN_reg_T1", .group = "v6m", .class = "data_processing", .bits = "0100001111mmmddd", .text = "mvns r{d}, r{m}" },
     .{ .name = "NOP_T1", .group = "v6m", .class = "system", .bits = "1011111100000000", .text = "nop" },
     .{ .name = "ORR_reg_T1", .group = "v6m", .class = "data_processing", .bits = "0100001100mmmddd", .text = "orrs r{d}, r{m}" },

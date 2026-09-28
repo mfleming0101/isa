@@ -97,14 +97,35 @@ fn index(w: *std.Io.Writer, leaf: u32, gates: []const u32) !void {
 
 fn execute(w: *std.Io.Writer, leaf: u32, rows: []const spec.Row, gates: []const u32) !void {
     if (leaf == tree.undefined_index) return w.writeAll("return .{};\n");
-    const row = rows[leaf];
     if (gates[leaf] != 0) try w.print("{{ if (allowed & {d} == 0) return .{{}}; ", .{gates[leaf]});
-    try w.print("return .by(@call(.always_inline, sem.@\"{s}\", .{{ s, host", .{row.name});
+    try byClass(w, rows[leaf]);
+    try w.print("{s}\n", .{if (gates[leaf] != 0) " }" else ""});
+}
+
+fn byClass(w: *std.Io.Writer, row: spec.Row) !void {
+    const differs = for (row.aliases) |a| {
+        if (a.class != null) break true;
+    } else false;
+    try w.writeAll(if (differs) "return .{ .outcome = " else "return .by(");
+    try handler(w, row);
+    if (differs) {
+        try w.writeAll(", .class = ");
+        for (row.aliases) |a| {
+            try w.writeAll("if (");
+            try operand(w, row.field(a.letter).?);
+            try w.print(" == {d}) .{s} else ", .{ a.value, a.class orelse row.class });
+        }
+        try w.print(".{s} }};", .{row.class});
+    } else try w.print(", .{s});", .{row.class});
+}
+
+fn handler(w: *std.Io.Writer, row: spec.Row) !void {
+    try w.print("@call(.always_inline, sem.@\"{s}\", .{{ s, host", .{row.name});
     for (row.fields) |f| {
         try w.writeAll(", ");
         try operand(w, f);
     }
-    try w.print(" }}), .{s});{s}\n", .{ row.class, if (gates[leaf] != 0) " }" else "" });
+    try w.writeAll(" })");
 }
 
 fn pad(w: *std.Io.Writer, depth: usize) !void {

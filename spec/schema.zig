@@ -1,12 +1,13 @@
 //! The shape of a spec row and the checks over a row set. A row names one instruction encoding: a
 //! bit pattern of fixed bits and operand letters, its assembler text with the letters as fields,
 //! the semantic class its cost is read from, the group that gates it, constraints that forbid field
-//! values another row claims, and aliases that render special cases. `validate` and `ambiguities`
-//! decide whether a set is well formed and whether any two rows can match one code.
+//! values another row claims, and aliases that render special cases, some with a class of their
+//! own. `validate` and `ambiguities` decide whether a set is well formed and whether any two rows
+//! can match one code.
 const std = @import("std");
 
-/// An alternative rendering used when the named field holds the value.
-pub const Alias = struct { text: []const u8, letter: u8, value: u32 = 15 };
+/// An alternative rendering, and class where it differs, used when the named field holds the value.
+pub const Alias = struct { text: []const u8, letter: u8, value: u32 = 15, class: ?[]const u8 = null };
 
 /// A value the row forbids in the fields the letters name, because another row claims it.
 pub const Constraint = struct { letters: []const u8, ne: u32 };

@@ -86,3 +86,76 @@ test "bne branches on a clear Z to a halfword offset from two instructions on" {
     try std.testing.expectEqual(sem.Outcome.branched, run(&s, &memory, 0xd180));
     try std.testing.expectEqual(@as(u32, 4), s.pc);
 }
+
+const Coded = struct { text: []const u8, code: u32 };
+
+fn expectClass(class: sem.Class, cases: []const Coded) !void {
+    const every = @import("../../../src/arm/isa/decode.zig").every;
+    for (cases) |c| {
+        var buffer: [64]u8 = undefined;
+        var text = std.Io.Writer.fixed(&buffer);
+        try @import("arm_disasm").write(&text, c.code, 0, every);
+        try std.testing.expectEqualStrings(c.text, text.buffered());
+        var memory: [16]u8 = @splat(0);
+        var host: Host = .{ .memory = .{ .bytes = &memory, .base = 0 } };
+        var s: sem.State = .{};
+        const done = if (c.code > 0xffff) decode.executeWide(Host, &s, &host, c.code, every) else decode.executeNarrow(Host, &s, &host, c.code, every);
+        try std.testing.expectEqual(class, done.class);
+    }
+}
+
+test "every multiply row and multiply alias answers the multiply class" {
+    try expectClass(.multiply, &.{
+        .{ .text = "muls r3, r5, r3", .code = 0x436b },
+        .{ .text = "mla r0, r1, r2, r3", .code = 0xfb01_3002 },
+        .{ .text = "mul.w r0, r1, r2", .code = 0xfb01_f002 },
+        .{ .text = "mls r0, r1, r2, r3", .code = 0xfb01_3012 },
+        .{ .text = "smull r0, r1, r2, r3", .code = 0xfb82_0103 },
+        .{ .text = "umull r0, r1, r2, r3", .code = 0xfba2_0103 },
+        .{ .text = "smlal r0, r1, r2, r3", .code = 0xfbc2_0103 },
+        .{ .text = "umlal r0, r1, r2, r3", .code = 0xfbe2_0103 },
+        .{ .text = "smlabb r0, r1, r2, r3", .code = 0xfb11_3002 },
+        .{ .text = "smulbb r0, r1, r2", .code = 0xfb11_f002 },
+        .{ .text = "smlabt r0, r1, r2, r3", .code = 0xfb11_3012 },
+        .{ .text = "smulbt r0, r1, r2", .code = 0xfb11_f012 },
+        .{ .text = "smlatb r0, r1, r2, r3", .code = 0xfb11_3022 },
+        .{ .text = "smultb r0, r1, r2", .code = 0xfb11_f022 },
+        .{ .text = "smlatt r0, r1, r2, r3", .code = 0xfb11_3032 },
+        .{ .text = "smultt r0, r1, r2", .code = 0xfb11_f032 },
+        .{ .text = "smlawb r0, r1, r2, r3", .code = 0xfb31_3002 },
+        .{ .text = "smulwb r0, r1, r2", .code = 0xfb31_f002 },
+        .{ .text = "smlawt r0, r1, r2, r3", .code = 0xfb31_3012 },
+        .{ .text = "smulwt r0, r1, r2", .code = 0xfb31_f012 },
+        .{ .text = "smlad r0, r1, r2, r3", .code = 0xfb21_3002 },
+        .{ .text = "smuad r0, r1, r2", .code = 0xfb21_f002 },
+        .{ .text = "smladx r0, r1, r2, r3", .code = 0xfb21_3012 },
+        .{ .text = "smuadx r0, r1, r2", .code = 0xfb21_f012 },
+        .{ .text = "smlsd r0, r1, r2, r3", .code = 0xfb41_3002 },
+        .{ .text = "smusd r0, r1, r2", .code = 0xfb41_f002 },
+        .{ .text = "smlsdx r0, r1, r2, r3", .code = 0xfb41_3012 },
+        .{ .text = "smusdx r0, r1, r2", .code = 0xfb41_f012 },
+        .{ .text = "smmla r0, r1, r2, r3", .code = 0xfb51_3002 },
+        .{ .text = "smmul r0, r1, r2", .code = 0xfb51_f002 },
+        .{ .text = "smmlar r0, r1, r2, r3", .code = 0xfb51_3012 },
+        .{ .text = "smmulr r0, r1, r2", .code = 0xfb51_f012 },
+        .{ .text = "smmls r0, r1, r2, r3", .code = 0xfb61_3002 },
+        .{ .text = "smmlsr r0, r1, r2, r3", .code = 0xfb61_3012 },
+        .{ .text = "smlalbb r0, r1, r2, r3", .code = 0xfbc2_0183 },
+        .{ .text = "smlalbt r0, r1, r2, r3", .code = 0xfbc2_0193 },
+        .{ .text = "smlaltb r0, r1, r2, r3", .code = 0xfbc2_01a3 },
+        .{ .text = "smlaltt r0, r1, r2, r3", .code = 0xfbc2_01b3 },
+        .{ .text = "smlald r0, r1, r2, r3", .code = 0xfbc2_01c3 },
+        .{ .text = "smlaldx r0, r1, r2, r3", .code = 0xfbc2_01d3 },
+        .{ .text = "smlsld r0, r1, r2, r3", .code = 0xfbd2_01c3 },
+        .{ .text = "smlsldx r0, r1, r2, r3", .code = 0xfbd2_01d3 },
+        .{ .text = "umaal r0, r1, r2, r3", .code = 0xfbe2_0163 },
+    });
+}
+
+test "the PACBTI aliases in the SMMLA, SMMLAR and SMMLS encodings keep the data-processing class" {
+    try expectClass(.data_processing, &.{
+        .{ .text = "autg r3, r1, r2", .code = 0xfb51_3f02 },
+        .{ .text = "bxaut r3, r1, r2", .code = 0xfb51_3f12 },
+        .{ .text = "pacg r0, r1, r2", .code = 0xfb61_f002 },
+    });
+}
