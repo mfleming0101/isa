@@ -6,14 +6,20 @@
 /// Kind of instruction a row is, used to price it and count its words.
 pub const Class = enum(u4) { data_processing, load, store, load_multiple, store_multiple, push, pop, pop_pc, branch, branch_link, system, sleep, special_register, barrier, divide };
 
-/// Cortex-M4 UDIV and SDIV cycles: 2 for a zero operand, 3 for a narrower dividend, else 4 plus
-/// ceil(span/4).
-pub fn divideCycles(dividend: u32, divisor: u32, signed: bool) u8 {
+/// A measured divider's cycles: zero divisor, zero dividend, narrower dividend, else base plus one
+/// per `bits` bits; SDIV adds `signed`.
+pub const Divide = struct { zero_divisor: u4, zero_dividend: u4, narrower: u4, base: u4, bits: u4, signed: u4 };
+
+/// UDIV and SDIV cycles under a core's divider, signed operands taken by magnitude.
+pub fn divideCycles(dividend: u32, divisor: u32, signed: bool, divide: Divide) u8 {
     const a = if (signed) @abs(@as(i32, @bitCast(dividend))) else dividend;
     const b = if (signed) @abs(@as(i32, @bitCast(divisor))) else divisor;
-    if (a == 0 or b == 0) return 2;
+    const extra: u8 = if (signed) divide.signed else 0;
+    if (b == 0) return extra + divide.zero_divisor;
+    if (a == 0) return extra + divide.zero_dividend;
     const n = @as(i8, @clz(b)) - @as(i8, @clz(a)) + 1;
-    return if (n <= 0) 3 else 4 + @as(u8, @intCast(n + 3)) / 4;
+    if (n <= 0) return extra + divide.narrower;
+    return extra + divide.base + (@as(u8, @intCast(n)) + divide.bits - 1) / divide.bits;
 }
 
 /// Cycle price of a class: base cycles, the extra when taken, and what each register of its list

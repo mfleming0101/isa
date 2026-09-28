@@ -1,10 +1,12 @@
 //! Tests of the step loop over a small in-memory host: program counter advance,
 //! branches, breakpoints, undefined and unimplemented codes, fetch and data faults,
-//! alignment, IT blocks, BTI landing and the branch future instructions.
+//! alignment, IT blocks, BTI landing, the branch future instructions, and the divide and
+//! straddle timing rules.
 const std = @import("std");
 const State = @import("../../../src/arm/isa/state.zig").State;
 const step = @import("../../../src/arm/isa/step.zig");
 const Stop = step.Stop;
+const m4_divide: instruction.Divide = .{ .zero_divisor = 2, .zero_dividend = 2, .narrower = 3, .base = 4, .bits = 4, .signed = 0 };
 const free: step.Model.Costs = @splat(.{ .cycles = 0, .taken = 0, .per_register = 1 });
 const Architecture = @import("../../../src/arm/isa/architecture.zig").Architecture;
 const instruction = @import("../../../src/arm/isa/instruction.zig");
@@ -402,12 +404,44 @@ test "divide cycles follow the operands' leading bits as the STM32G431 measured 
         .{ .a = 0x8000_0000, .b = 1, .signed = true, .cycles = 12 },
         .{ .a = 0x7fff_ffff, .b = 0xffff_fff1, .signed = true, .cycles = 11 },
     };
-    for (points) |p| try std.testing.expectEqual(p.cycles, instruction.divideCycles(p.a, p.b, p.signed));
+    for (points) |p| try std.testing.expectEqual(p.cycles, instruction.divideCycles(p.a, p.b, p.signed, m4_divide));
+}
+
+test "divide cycles follow the STM32H723's divider: two bits a cycle, a slow zero dividend, and SDIV one more" {
+    const points = [_]struct { a: u32, b: u32, signed: bool, cycles: u8 }{
+        .{ .a = ~@as(u32, 0), .b = 0, .signed = false, .cycles = 3 },
+        .{ .a = 0, .b = 1, .signed = false, .cycles = 7 },
+        .{ .a = 1, .b = 2, .signed = false, .cycles = 3 },
+        .{ .a = 1, .b = 1, .signed = false, .cycles = 4 },
+        .{ .a = 0x1f, .b = 1, .signed = false, .cycles = 6 },
+        .{ .a = ~@as(u32, 0), .b = 1, .signed = false, .cycles = 19 },
+        .{ .a = 0, .b = 1, .signed = true, .cycles = 8 },
+        .{ .a = 0x8000_0000, .b = 0, .signed = true, .cycles = 4 },
+        .{ .a = 0x8000_0000, .b = 1, .signed = true, .cycles = 20 },
+        .{ .a = ~@as(u32, 0), .b = 2, .signed = true, .cycles = 4 },
+    };
+    for (points) |p| try std.testing.expectEqual(p.cycles, instruction.divideCycles(p.a, p.b, p.signed, .{ .zero_divisor = 3, .zero_dividend = 7, .narrower = 3, .base = 3, .bits = 2, .signed = 1 }));
+}
+
+test "a divide of zero by zero costs the zero-divisor cycles, which neither record measures otherwise" {
+    const h723: instruction.Divide = .{ .zero_divisor = 3, .zero_dividend = 7, .narrower = 3, .base = 3, .bits = 2, .signed = 1 };
+    try std.testing.expectEqual(@as(u8, 2), instruction.divideCycles(0, 0, false, m4_divide));
+    try std.testing.expectEqual(@as(u8, 3), instruction.divideCycles(0, 0, false, h723));
+    try std.testing.expectEqual(@as(u8, 4), instruction.divideCycles(0, 0, true, h723));
+}
+
+test "the largest divider parameters cost a full-width divide without overflow" {
+    const slowest: instruction.Divide = .{ .zero_divisor = 15, .zero_dividend = 15, .narrower = 15, .base = 15, .bits = 1, .signed = 15 };
+    try std.testing.expectEqual(@as(u8, 47), instruction.divideCycles(~@as(u32, 0), 1, false, slowest));
+    try std.testing.expectEqual(@as(u8, 62), instruction.divideCycles(0x8000_0000, 1, true, slowest));
+    try std.testing.expectEqual(@as(u8, 30), instruction.divideCycles(1, 0, true, slowest));
+    const widest: instruction.Divide = .{ .zero_divisor = 0, .zero_dividend = 0, .narrower = 0, .base = 15, .bits = 15, .signed = 15 };
+    try std.testing.expectEqual(@as(u8, 33), instruction.divideCycles(0x8000_0000, 1, true, widest));
 }
 
 test "with the divide rule a UDIV is charged by the operands it read, even when it overwrites one" {
     var m = memory7(&.{ 0xfbb1, 0xf1f2 });
-    m.model.rules.divide = true;
+    m.model.rules.divide = m4_divide;
     var s: State = .{ .xpsr = State.flag_t };
     s.r[1] = 0xffff;
     s.r[2] = 1;
@@ -435,6 +469,24 @@ test "with the straddle rule a taken branch to a 32-bit instruction at a halfwor
     var off = memory7(&.{ 0xe001, 0, 0, 0xf000 });
     s = .{ .xpsr = State.flag_t };
     try std.testing.expectEqual(step.Result.retired(0xe001, .branch, 0, true), run(&s, &off));
+}
+
+test "the straddle rule charges a taken B<c> and B.W, but not a BX, to a 32-bit instruction at a halfword" {
+    var beq = memory7(&.{ 0xd001, 0, 0, 0xf000 });
+    beq.model.rules.straddle = true;
+    var s: State = .{ .xpsr = State.flag_t | State.flag_z };
+    try std.testing.expectEqual(step.Result.retired(0xd001, .branch, 1, true), run(&s, &beq));
+    var b_w = memory7(&.{ 0xf000, 0xb801, 0, 0xf000 });
+    b_w.model.rules.straddle = true;
+    s = .{ .xpsr = State.flag_t };
+    try std.testing.expectEqual(step.Result.retired(0xf000_b801, .branch, 1, true), run(&s, &b_w));
+    try std.testing.expectEqual(@as(u32, 6), s.pc);
+    var bx = memory7(&.{ 0x4700, 0, 0, 0xf000 });
+    bx.model.rules.straddle = true;
+    s = .{ .xpsr = State.flag_t };
+    s.r[0] = 7;
+    try std.testing.expectEqual(step.Result.retired(0x4700, .branch, 0, true), run(&s, &bx));
+    try std.testing.expectEqual(@as(u32, 6), s.pc);
 }
 
 test "a load multiple charges each register only as much as its class's per-register cost says" {

@@ -67,10 +67,10 @@ pub const Model = struct {
     rules: Rules = .{},
 
     /// Timing measured on a board that a per-class cost cannot hold.
-    pub const Rules = packed struct {
-        /// UDIV and SDIV cost by their operands, instruction.divideCycles.
-        divide: bool = false,
-        /// A taken branch to a 32-bit instruction that straddles a word costs a cycle more.
+    pub const Rules = struct {
+        /// UDIV and SDIV cost by their operands under this divider, instruction.divideCycles.
+        divide: ?instruction.Divide = null,
+        /// A taken B or B<c> to a 32-bit instruction straddling a word costs one more; kernels b_w2, beq_w2, b_nw2.
         straddle: bool = false,
     };
 
@@ -133,7 +133,7 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     const hw2 = access.halfword(Host, host, held, address +% 2) catch |err| return Result.stopped(null, refused(err));
     const code = @as(u32, hw1) << 16 | hw2;
     if (in_it and !s.itPasses()) return skip(model.costOf(.data_processing), s, address, 4, code);
-    const dividing = model.rules.divide and hw1 & 0xffd0 == 0xfb90;
+    const dividing = model.rules.divide != null and hw1 & 0xffd0 == 0xfb90;
     const dividend = if (dividing) s.get(@truncate(hw1)) else 0;
     const divisor = if (dividing) s.get(@truncate(hw2)) else 0;
     const done = @call(.always_inline, tree.executeWide, .{ Host, s, host, code, groups orelse model.decoding.groups });
@@ -143,7 +143,7 @@ fn wide(comptime Host: type, comptime groups: ?decode.Groups, s: *State, host: *
     }
     switch (done.class) {
         inline else => |c| {
-            const cost = if (c == .divide and dividing) instruction.Cost{ .cycles = instruction.divideCycles(dividend, divisor, hw1 & 0x20 == 0), .taken = 0, .per_register = 0 } else model.costOf(c);
+            const cost = if (c == .divide and dividing) instruction.Cost{ .cycles = instruction.divideCycles(dividend, divisor, hw1 & 0x20 == 0, model.rules.divide.?), .taken = 0, .per_register = 0 } else model.costOf(c);
             return @call(.always_inline, retire, .{ Host, s, host, cost, address, 4, code, c, done.outcome, model.rules.straddle });
         },
     }
@@ -170,10 +170,15 @@ fn refused(err: instruction.Failure) Stop {
     };
 }
 
-fn straddles(comptime Host: type, host: *Host, target: u32) bool {
-    if (target & 2 == 0) return false;
+fn straddles(comptime Host: type, host: *Host, code: u32, target: u32) bool {
+    if (target & 2 == 0 or !direct(code)) return false;
     var held: access.Span(Host) = &.{};
     return escapes(access.fetch(Host, host, target, &held) catch return false);
+}
+
+fn direct(code: u32) bool {
+    if (code > 0xffff) return code & 0xf800_c000 == 0xf000_8000;
+    return code >> 12 == 0xd or code >> 11 == 0x1c;
 }
 
 fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, address: u32, length: u32, code: u32, class: instruction.Class, outcome: instruction.Outcome, straddle: bool) Result {
@@ -183,7 +188,7 @@ fn retire(comptime Host: type, s: *State, host: *Host, cost: instruction.Cost, a
             s.pc = address +% length;
             return Result.retired(code, class, cycles, false);
         },
-        .branched => return Result.retired(code, class, charge(charge(cycles, cost.taken), @intFromBool(straddle and straddles(Host, host, s.pc))), true),
+        .branched => return Result.retired(code, class, charge(charge(cycles, cost.taken), @intFromBool(straddle and straddles(Host, host, code, s.pc))), true),
         .supervisor_call => {
             s.pc = address +% length;
             host.signal(.supervisor_call);
