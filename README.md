@@ -75,7 +75,7 @@ zig build examples    # the examples alone
 ```
 
 The oracle comparisons, the firmware corpus and the timing bench need llvm-objdump, QEMU and
-the Sail RISC-V model. The corpus and the timing loops are cross-compiled by `zig cc`, so no
+the Sail RISC-V model. The corpus and the timing loops are cross-compiled by `zig`, so no
 other toolchain is needed. They run in a container image pinned by digest:
 
 ```sh

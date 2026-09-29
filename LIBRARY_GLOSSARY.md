@@ -114,7 +114,7 @@ See also: [Host](#host), [Span contract](#span-contract), [Notification](#notifi
 ## Corpus
 
 The 49 pinned firmware images the library is run against, plus their expected retired counts and
-console checksums. Six C programs, CoreMark and thirteen Embench benchmarks, built for both
+console checksums. Six Zig programs, CoreMark and eighteen Embench benchmarks, built for both
 architectures.
 
 `corpus/manifest.zon`, read through

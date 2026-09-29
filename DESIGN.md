@@ -110,7 +110,7 @@ reference's first line.
 | Layer | Oracle | Reference | Gate |
 |---|---|---|---|
 | Decode sweep | The library itself | `oracle/sweep_*.txt`, one FNV hash per 65536 codes of the high halfword | Bucket hashes equal |
-| Disassembly | llvm-objdump 19.1.7 | `oracle/disasm_*.txt`, every decodable code of the corpus, 31359 Arm and 30940 RISC-V lines | Text equal after normalising spelling |
+| Disassembly | llvm-objdump 19.1.7 | `oracle/disasm_*.txt`, every decodable code of the corpus, 29678 Arm and 30526 RISC-V lines | Text equal after normalising spelling |
 | Lockstep | Sail 0.14 (RV32), QEMU 10.0.13 mps2-an385 (Arm) | `oracle/trace_*.txt`, one hash per 65536 retired instructions of each corpus image | Hashes equal for the whole run |
 | Corpus | The programs themselves | `corpus/manifest.zon`: 49 images, each with its retired count and the CRC-32 of its console output at the breakpoint | Count and checksum equal |
 
@@ -118,10 +118,11 @@ The lockstep oracle is Sail under `oracle/sail_rv32.json`, and the default RISC-
 implementation `csr.sail` in `src/riscv/isa/csr.zig` mirrors that configuration, so the library
 and the oracle make the same implementation-defined choices.
 
-The corpus is six C programs (`crc32`, `sort`, `memops`, `branchy`, `floats` and a
-self-modifying code test), CoreMark and thirteen Embench benchmarks, built for both
-architectures by `corpus/build.sh` against pinned upstream commits. The programs the two architectures share agree on the
-checksum, which ties two instruction sets and two semantic implementations to one answer.
+The corpus is six Zig programs (`crc32`, `sort`, `memops`, `branchy`, `floats` and a
+self-modifying code test), CoreMark and eighteen Embench benchmarks, the last two in C over a Zig
+runtime and libc, built for both architectures by `corpus/build.sh` against pinned upstream
+commits. The programs the two architectures share agree on the checksum, which ties two instruction
+sets and two semantic implementations to one answer.
 
 `zig build metrics` runs every layer and appends one row to `bench/summary.tsv`. The row is
 written even when a gate fails, with `status` set to `fail`, so a regression stays visible in
