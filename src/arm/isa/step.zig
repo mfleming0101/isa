@@ -20,7 +20,7 @@ comptime {
 }
 
 /// Reason the core halted instead of retiring an instruction.
-pub const Stop = enum(u5) { breakpoint, undefined_instruction, unimplemented, not_t32_state, fetch_fault, data_fault, unaligned_access, divide_by_zero, no_coprocessor, authentication_failure, not_branch_target, exception_return, unrecoverable_exception, secure_fault, fetch_violation, data_violation, tail_predication };
+pub const Stop = enum(u5) { breakpoint, undefined_instruction, unimplemented, not_t32_state, fetch_fault, data_fault, unaligned_access, divide_by_zero, no_coprocessor, authentication_failure, not_branch_target, exception_return, unrecoverable_exception, secure_fault, fetch_violation, data_violation, tail_predication, vector_catch };
 
 /// Signals a retired instruction raises to the system side.
 pub const Signal = enum { supervisor_call, exception_return, function_return };
