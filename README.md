@@ -12,7 +12,7 @@ The library is checked against:
 - llvm-objdump,
 - QEMU,
 - the Sail RISC-V model,
-- and a corpus of 49 firmware images in a [container](Dockerfile) pinned by digest.
+- and a corpus of 73 firmware images in a [container](Dockerfile) pinned by digest.
 
 ## Key features
 

@@ -7,9 +7,10 @@ set -eu
 cd "$(dirname "$0")"
 zig=${ZIG:-zig}
 out=out
-mkdir -p "$out/arm" "$out/riscv"
+mkdir -p "$out/arm" "$out/armv6m" "$out/riscv"
 
 arm_flags="--target=thumb-freestanding-eabi -mcpu=cortex_m3"
+armv6m_flags="--target=thumb-freestanding-eabi -mcpu=cortex_m0plus"
 riscv_flags="--target=riscv32-freestanding-none -mcpu=generic_rv32+m+c"
 riscv_f_flags="--target=riscv32-freestanding-none -mcpu=generic_rv32+m+c+f"
 common="-Os -g0 -ffreestanding -nostdlib -fno-sanitize=undefined -fno-builtin -Wall"
@@ -38,8 +39,10 @@ fi
 # script and port.zig. Each Zig source is compiled to an object under out/obj/<arch>/ first.
 build() {
     arch=$1; name=$2; shift 2
+    runtime=
     case $arch in
         arm)    flags="$arm_flags";    target="-target thumb-freestanding-eabi -mcpu cortex_m3";            port=port/arm;   out_arch=arm ;;
+        armv6m) flags="$armv6m_flags"; target="-target thumb-freestanding-eabi -mcpu cortex_m0plus";        port=port/arm;   out_arch=armv6m; runtime=-rtlib=compiler-rt ;;
         riscv)  flags="$riscv_flags";  target="-target riscv32-freestanding-none -mcpu generic_rv32+m+c";   port=port/riscv; out_arch=riscv ;;
         riscvf) flags="$riscv_f_flags"; target="-target riscv32-freestanding-none -mcpu generic_rv32+m+c+f"; port=port/riscv; out_arch=riscv ;;
     esac
@@ -55,16 +58,17 @@ build() {
             *) set -- "$@" "$source" ;;
         esac
     done
-    $zig cc $flags $common -T "$port/link.ld" -o "$out/$out_arch/$name.elf" "$port/start.S" "$@"
+    $zig cc $flags $common $runtime -T "$port/link.ld" -o "$out/$out_arch/$name.elf" "$port/start.S" "$@"
 }
 
-for arch in arm riscv; do
+for arch in arm armv6m riscv; do
     build "$arch" crc32   src/crc32.zig
     build "$arch" sort    src/sort.zig
     build "$arch" memops  src/memops.zig
     build "$arch" branchy src/branchy.zig
 done
 build arm   smc src/smc_arm.zig
+build armv6m smc src/smc_arm.zig
 build riscv smc src/smc_riscv.zig
 build riscvf floats src/floats.zig
 
@@ -73,7 +77,7 @@ cm="-I$coremark -I$coremark/barebones -Iport -DITERATIONS=570 -DMAIN_HAS_NOARGC=
 cm_src="$coremark/core_main.c $coremark/core_list_join.c $coremark/core_matrix.c \
         $coremark/core_state.c $coremark/core_util.c $coremark/barebones/core_portme.c \
         $coremark/barebones/ee_printf.c"
-for arch in arm riscv; do build "$arch" coremark $cm $cm_src; done
+for arch in arm armv6m riscv; do build "$arch" coremark $cm $cm_src; done
 
 embench=third_party/embench-iot
 if [ ! -d "$embench" ]; then
@@ -91,10 +95,10 @@ for d in "$embench"/src/*/; do
         matmult-int) gsf=76 ;;
         *)           gsf=1 ;;
     esac
-    for arch in arm riscv; do
+    for arch in arm armv6m riscv; do
         build "$arch" "eb_$bench" $eb -DGLOBAL_SCALE_FACTOR=$gsf -I"$d" port/embench.zig port/libc.zig \
             "$embench/support/beebsc.c" "$d"*.c
     done
 done
 
-ls -l "$out"/arm "$out"/riscv
+ls -l "$out"/arm "$out"/armv6m "$out"/riscv
