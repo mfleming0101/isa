@@ -45,10 +45,12 @@ pub fn Access(comptime kind: Kind, comptime immediate: bool) type {
             switch (target) {
                 .hart => |number| if (csr.floating(number) and s.csr.mstatus.fs == .off) return .illegal,
                 .protection => {},
+                .counter => if (!@hasDecl(@TypeOf(host.*), "readCounter")) return .illegal,
             }
             const old = if (!reads) 0 else switch (target) {
                 .hart => |number| s.csr.read(number),
                 .protection => |number| host.readPmp(number),
+                .counter => |number| if (@hasDecl(@TypeOf(host.*), "readCounter")) host.readCounter(number) else unreachable,
             };
             if (writing) {
                 const value = switch (kind) {
@@ -62,6 +64,7 @@ pub fn Access(comptime kind: Kind, comptime immediate: bool) type {
                         if (number == .mstatus or number == .mie) host.rearm();
                     },
                     .protection => |number| host.writePmp(number, value),
+                    .counter => |number| if (@hasDecl(@TypeOf(host.*), "writeCounter")) host.writeCounter(number, value) else unreachable,
                 }
             }
             if (reads) root.write(s, d, old);

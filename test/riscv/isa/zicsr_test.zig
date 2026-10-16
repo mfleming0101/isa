@@ -345,3 +345,43 @@ test "a write to mip is dropped, since MEIP, MTIP and MSIP are driven by the pla
     try std.testing.expectEqual(@as(u32, 0x0000_0020), s.csr.mip);
     try std.testing.expectEqual(@as(u32, 0x0000_0020), s.x[2]);
 }
+
+const Counted = struct {
+    const Self = @This();
+    held: [3]u32 = .{ 0, 3, 0 },
+
+    pub fn touch(_: *Self, _: u32) void {}
+    pub fn span(_: *Self, _: u32, comptime _: anytype) []u8 {
+        return &.{};
+    }
+    pub fn access(_: *Self, _: u32, comptime _: anytype, _: u32) error{DataFault}!u32 {
+        return error.DataFault;
+    }
+    pub fn readPmp(_: *Self, _: csr.Protection) u32 {
+        return 0;
+    }
+    pub fn writePmp(_: *Self, _: csr.Protection, _: u32) void {}
+    pub fn readCounter(self: *Self, n: csr.Counter) u32 {
+        return self.held[@intFromEnum(n) - 0x7e0];
+    }
+    pub fn writeCounter(self: *Self, n: csr.Counter, value: u32) void {
+        self.held[@intFromEnum(n) - 0x7e0] = value;
+    }
+    pub fn rearm(_: *Self) void {}
+    pub fn returned(_: *Self) void {}
+    pub fn sleep(_: *Self) void {}
+};
+
+test "mpcer, mpcmr and mpccr reach the host's counter on a hart whose model has them, and are illegal on any other or on a host with no counter, C3 TRM 1.4" {
+    var s: State = .{};
+    var h: Counted = .{};
+    s.x[1] = 1;
+    try std.testing.expectEqual(instruction.Outcome.illegal, step.call(Counted, &s, &h, access(.swap, 0, 0x7e0, 1), decode.every));
+    s.csr.implementation.performance_counter = true;
+    try std.testing.expectEqual(instruction.Outcome.next, step.call(Counted, &s, &h, access(.swap, 0, 0x7e0, 1), decode.every));
+    try std.testing.expectEqual(@as(u32, 1), h.held[0]);
+    try std.testing.expectEqual(instruction.Outcome.next, step.call(Counted, &s, &h, access(.set, 2, 0x7e1, 0), decode.every));
+    try std.testing.expectEqual(@as(u32, 3), s.x[2]);
+    try std.testing.expectEqual(instruction.Outcome.illegal, exec(&s, access(.set, 3, 0x7e2, 0)));
+    try std.testing.expectEqualStrings("csrr sp, mpcmr", try render(access(.set, 2, 0x7e1, 0)));
+}

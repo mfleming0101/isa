@@ -65,6 +65,8 @@ pub const Implementation = struct {
     interrupt_csrs: bool,
     /// Whether the unit and its fflags, frm and fcsr are implemented, section 20.2.
     float: bool,
+    /// Whether the custom performance counter mpcer, mpcmr and mpccr is implemented, C3 TRM 1.4.
+    performance_counter: bool = false,
 };
 
 /// The Sail RISC-V model as the lockstep oracle runs it: `sail_riscv_sim --rv32` under
@@ -264,14 +266,18 @@ pub const Protection = enum(u12) {
     }
 };
 
-/// What a CSR number names: a hart register or a protection-unit one.
-pub const Target = union(enum) { hart: Number, protection: Protection };
+/// The custom performance counter's CSR numbers, C3 TRM 1.4, reached through the host's clock.
+pub const Counter = enum(u12) { mpcer = 0x7e0, mpcmr = 0x7e1, mpccr = 0x7e2 };
+
+/// What a CSR number names: a hart register, a protection-unit one or a counter one.
+pub const Target = union(enum) { hart: Number, protection: Protection, counter: Counter };
 
 /// Whether an access may reach a CSR under the rules of section 2.1, and what it names.
 pub fn allowed(number: u12, privilege: Privilege, writing: bool, implementation: Implementation) ?Target {
     if (writing and number >> 10 == 0b11) return null;
     if (@intFromEnum(privilege) < @as(u2, @truncate(number >> 8))) return null;
     if (std.enums.fromInt(Protection, number)) |unit| return .{ .protection = unit };
+    if (std.enums.fromInt(Counter, number)) |counter| return if (implementation.performance_counter) .{ .counter = counter } else null;
     const hart = std.enums.fromInt(Number, number) orelse return null;
     if (!implementation.interrupt_csrs and (hart == .mie or hart == .mip)) return null;
     if (!implementation.float and (hart == .fflags or hart == .frm or hart == .fcsr)) return null;
@@ -286,5 +292,6 @@ pub fn floating(number: Number) bool {
 /// The name a disassembler prints for a CSR number, or null where none is implemented.
 pub fn nameOf(number: u12) ?[]const u8 {
     if (std.enums.fromInt(Number, number)) |n| return @tagName(n);
+    if (std.enums.fromInt(Counter, number)) |n| return @tagName(n);
     return @tagName(std.enums.fromInt(Protection, number) orelse return null);
 }
