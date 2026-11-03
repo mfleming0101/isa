@@ -438,6 +438,49 @@ test "the arithmetic rounds the way FPSCR.RMode asks and not always to nearest, 
     try std.testing.expectEqual(@as(u32, 0x8000_0000), s.fp[1]);
 }
 
+test "an inexact sum raises IXC again after VMSR clears FPSCR, and an exact one leaves it clear, A2.5.3" {
+    var s: State = .{ .control = State.control_fpca };
+    var m = machine(.armv7em, false);
+    s.fp[2] = one;
+    s.fp[3] = 0x3400_0001;
+    try std.testing.expectEqual(.next, exec(&s, &m, 0xee710a21));
+    try std.testing.expectEqual(@as(u32, 0x10), s.fpscr & 0x9f);
+    s.r[1] = 0;
+    try std.testing.expectEqual(.next, exec(&s, &m, 0xeee11a10));
+    try std.testing.expectEqual(@as(u32, 0), s.fpscr);
+    s.fp[3] = one;
+    try std.testing.expectEqual(.next, exec(&s, &m, 0xee710a21));
+    try std.testing.expectEqual(@as(u32, 0x4000_0000), s.fp[1]);
+    try std.testing.expectEqual(@as(u32, 0), s.fpscr & 0x9f);
+    s.fp[3] = 0x3400_0001;
+    try std.testing.expectEqual(.next, exec(&s, &m, 0xee710a21));
+    try std.testing.expectEqual(@as(u32, 0x3f80_0001), s.fp[1]);
+    try std.testing.expectEqual(@as(u32, 0x10), s.fpscr & 0x9f);
+}
+
+test "with IXC already set, a tiny product still raises UFC only when inexact under FZ clear, and always under FZ set, A2.5.3 A2.5.4" {
+    var s: State = .{ .control = State.control_fpca };
+    var m = machine(.armv7em, false);
+    const cases = [_]struct { y: u32, fz: u32, result: u32, flags: u32 }{
+        .{ .y = 0x3f00_0001, .fz = 0, .result = 0x0040_0000, .flags = 0x18 },
+        .{ .y = 0x3f00_0000, .fz = 0, .result = 0x0040_0000, .flags = 0x10 },
+        .{ .y = 0x3f7f_ffff, .fz = 0, .result = 0x0080_0000, .flags = 0x18 },
+        .{ .y = 0x3f80_0000, .fz = 0, .result = 0x0080_0000, .flags = 0x10 },
+        .{ .y = 0x3f00_0001, .fz = 1 << 24, .result = 0, .flags = 0x18 },
+        .{ .y = 0x3f00_0000, .fz = 1 << 24, .result = 0, .flags = 0x18 },
+        .{ .y = 0x3f7f_ffff, .fz = 1 << 24, .result = 0, .flags = 0x18 },
+        .{ .y = 0x3f80_0000, .fz = 1 << 24, .result = 0x0080_0000, .flags = 0x10 },
+    };
+    for (cases) |c| {
+        s.fpscr = c.fz | 0x10;
+        s.fp[2] = 0x0080_0000;
+        s.fp[3] = c.y;
+        try std.testing.expectEqual(.next, exec(&s, &m, 0xee610a21));
+        try std.testing.expectEqual(c.result, s.fp[1]);
+        try std.testing.expectEqual(c.flags, s.fpscr & 0x9f);
+    }
+}
+
 test "FPSCR.FZ reads a denormal operand as zero and flushes a denormal result to zero, A2.5.4" {
     var s: State = .{ .control = State.control_fpca };
     var m = machine(.armv7em, false);
@@ -456,6 +499,29 @@ test "FPSCR.FZ reads a denormal operand as zero and flushes a denormal result to
     try std.testing.expectEqual(.next, exec(&s, &m, 0xeec10a21));
     try std.testing.expectEqual(@as(u32, 0x0020_0000), s.fp[1]);
     try std.testing.expectEqual(@as(u32, 0x18), s.fpscr & 0x9f);
+}
+
+test "a denormal operand is used as it stands under FZ clear, and read as zero with IDC under FZ set, A2.5.4" {
+    var s: State = .{ .control = State.control_fpca };
+    var m = machine(.armv7em, false);
+    const cases = [_]struct { fz: u32, product: u32, nzcv: u32, flags: u32 }{
+        .{ .fz = 0, .product = 2, .nzcv = 0x2000_0000, .flags = 0 },
+        .{ .fz = 1 << 24, .product = 0, .nzcv = 0x6000_0000, .flags = 0x80 },
+    };
+    for (cases) |c| {
+        s.fpscr = c.fz;
+        s.fp[2] = 1;
+        s.fp[3] = 0x4000_0000;
+        try std.testing.expectEqual(.next, exec(&s, &m, 0xee610a21));
+        try std.testing.expectEqual(c.product, s.fp[1]);
+        try std.testing.expectEqual(c.flags, s.fpscr & 0x9f);
+        s.fpscr = c.fz;
+        s.fp[0] = 1;
+        s.fp[1] = 0;
+        try std.testing.expectEqual(.next, exec(&s, &m, 0xeeb40a60));
+        try std.testing.expectEqual(c.nzcv, s.fpscr & fp.nzcv);
+        try std.testing.expectEqual(c.flags, s.fpscr & 0x9f);
+    }
 }
 
 test "FPSCR.DN answers the default NaN rather than propagating the operand NaN, A2.5.4" {

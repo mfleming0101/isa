@@ -146,6 +146,14 @@ fn tiny(comptime T: type, result: T, direction: i2) bool {
     return if (result > 0) direction < 0 else direction > 0;
 }
 
+/// A round-to-nearest result above the smallest normal and finite, which no NaN, overflow, underflow,
+/// flush or directed rounding can touch: only IXC can follow, raised when direction says inexact.
+fn plain(s: *State, comptime T: type, value: T, direction: i2) ?T {
+    if (s.fpscr & rmode != 0 or !std.math.isNormal(value) or @abs(value) == std.math.floatMin(T)) return null;
+    if (direction != 0) s.fpscr |= ixc;
+    return value;
+}
+
 fn cancelled(comptime T: type, s: *const State, negative: bool, other: bool, sum: T, exact: bool) T {
     if (sum != 0 or !exact or negative == other) return sum;
     return if ((s.fpscr & rmode) >> 22 == 2) -@as(T, 0.0) else 0.0;
@@ -320,6 +328,7 @@ fn claim(s: *State) void {
 pub fn check(comptime Host: type, s: *State, host: *Host) Failure!?Outcome {
     if (!host.coprocessorEnabled()) return .no_coprocessor;
     if (host.lazyFpFrame()) |frame| try preserve(Host, s, host, frame);
+    if (s.control & State.control_fpca != 0 and (!s.secure or s.control & State.control_sfpa != 0)) return null;
     if (host.automaticFpState() and
         (s.control & State.control_fpca == 0 or (s.secure and s.control & State.control_sfpa == 0)))
     {
@@ -385,7 +394,12 @@ pub fn store(s: *State, comptime T: type, i: u5, value: std.meta.Int(.unsigned, 
 
 /// Flushes a denormal operand to zero when FPSCR asks, raising IDC except for f16.
 pub fn admitted(s: *State, comptime T: type, value: T) T {
-    if (s.fpscr & flushed(T) != 0 and value != 0 and std.math.isFinite(value) and !std.math.isNormal(value)) {
+    if (s.fpscr & flushed(T) == 0) return value;
+    return @call(.never_inline, denormal, .{ s, T, value });
+}
+
+fn denormal(s: *State, comptime T: type, value: T) T {
+    if (value != 0 and std.math.isFinite(value) and !std.math.isNormal(value)) {
         if (T != f16) s.fpscr |= idc;
         return if (std.math.signbit(value)) -@as(T, 0.0) else 0.0;
     }
@@ -426,18 +440,15 @@ fn chosen(comptime T: type, operands: []const T) ?T {
 
 /// Performs VADD, VSUB, VMUL, VNMUL or VDIV on x and y with IEEE rounding and FPSCR flags.
 pub fn arithmetic(s: *State, comptime kind: Arithmetic, comptime T: type, x: T, y: T) T {
-    const raw_result: T = chosen(T, &.{ x, y }) orelse switch (kind) {
+    const answer: T = switch (kind) {
         .add => x + y,
         .sub => x - y,
         .mul, .nmul => x * y,
         .div => x / y,
     };
-    const direction: i2 = switch (kind) {
-        .add => drifted(T, x, y, raw_result),
-        .sub => drifted(T, x, -y, raw_result),
-        .mul, .nmul => multiplied(T, x, y, raw_result),
-        .div => quotient(T, x, y, raw_result),
-    };
+    if (plain(s, T, answer, deviation(kind, T, x, y, answer))) |value| return value;
+    const raw_result: T = chosen(T, &.{ x, y }) orelse answer;
+    const direction = deviation(kind, T, x, y, raw_result);
     const result: T = switch (kind) {
         .add => cancelled(T, s, std.math.signbit(x), std.math.signbit(y), raw_result, direction == 0),
         .sub => cancelled(T, s, std.math.signbit(x), !std.math.signbit(y), raw_result, direction == 0),
@@ -456,6 +467,15 @@ pub fn arithmetic(s: *State, comptime kind: Arithmetic, comptime T: type, x: T, 
     return raise(s, T, result, direction, overflow, nan_operand, spilled | divided | signalling(T, x) | signalling(T, y));
 }
 
+fn deviation(comptime kind: Arithmetic, comptime T: type, x: T, y: T, result: T) i2 {
+    return switch (kind) {
+        .add => drifted(T, x, y, result),
+        .sub => drifted(T, x, -y, result),
+        .mul, .nmul => multiplied(T, x, y, result),
+        .div => quotient(T, x, y, result),
+    };
+}
+
 /// Whether kind is a chained, unfused multiply-accumulate.
 pub fn chained(comptime kind: Accumulate) bool {
     return kind == .mla or kind == .mls or kind == .nmla or kind == .nmls;
@@ -464,14 +484,12 @@ pub fn chained(comptime kind: Accumulate) bool {
 /// Multiply-accumulate; chained kinds round the product first, fused kinds round once.
 pub fn accumulate(s: *State, comptime kind: Accumulate, comptime T: type, x: T, y: T, held: T) T {
     if (!chained(kind)) return multiplyAdd(s, kind, T, x, y, held);
-    const raw_product = chosen(T, &.{ x, y }) orelse x * y;
-    const both = std.math.isNan(x) or std.math.isNan(y);
-    const over = std.math.isInf(raw_product) and !std.math.isInf(x) and !std.math.isInf(y);
-    const wide: u32 = if (over) overflowed(T, @as(Wide(T), x) * @as(Wide(T), y)) else 0;
-    const made = raise(s, T, raw_product, multiplied(T, x, y, raw_product), over, both, wide | signalling(T, x) | signalling(T, y));
+    const made = arithmetic(s, .mul, T, x, y);
     const addend: T = if (kind == .nmla or kind == .nmls) -held else held;
     const signed: T = if (kind == .mls or kind == .nmla) -made else made;
-    const raw_total = chosen(T, &.{ addend, signed }) orelse addend + signed;
+    const sum = addend + signed;
+    if (plain(s, T, sum, drifted(T, addend, signed, sum))) |value| return value;
+    const raw_total = chosen(T, &.{ addend, signed }) orelse sum;
     const drift = drifted(T, addend, signed, raw_total);
     const total = cancelled(T, s, std.math.signbit(addend), std.math.signbit(signed), raw_total, drift == 0);
     const nan_operand = std.math.isNan(addend) or std.math.isNan(signed);
@@ -487,7 +505,9 @@ pub fn multiplyAdd(s: *State, comptime kind: Accumulate, comptime T: type, x: T,
     const nan_operand = std.math.isNan(a) or std.math.isNan(y) or std.math.isNan(c);
     const impossible = (std.math.isInf(a) and y == 0) or (a == 0 and std.math.isInf(y));
     const forced = impossible and signalling(T, c) == 0;
-    const raw_result = if (forced) std.math.nan(T) else chosen(T, &.{ c, a, y }) orelse @mulAdd(T, a, y, c);
+    const fused = @mulAdd(T, a, y, c);
+    if (plain(s, T, fused, chain(T, a, y, c, fused))) |value| return value;
+    const raw_result = if (forced) std.math.nan(T) else chosen(T, &.{ c, a, y }) orelse fused;
     const drift = chain(T, a, y, c, raw_result);
     const result = cancelled(T, s, std.math.signbit(a) != std.math.signbit(y), std.math.signbit(c), raw_result, drift == 0);
     const factors = !std.math.isInf(x) and !std.math.isInf(y);
